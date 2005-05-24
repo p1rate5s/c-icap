@@ -1,0 +1,123 @@
+#
+# This file contains the default settings for c-icap
+#
+
+
+PidFile /var/run/c-icap.pid
+Timeout 300
+KeepAlive On
+MaxKeepAliveRequests 100
+# set KeepAliveTimeout to -1 for no timeout
+KeepAliveTimeout 600  
+StartServers 3
+MaxServers 10
+MinSpareThreads     10
+MaxSpareThreads     20
+ThreadsPerChild     10
+MaxRequestsPerChild  0
+
+
+Port 1344 
+User wwwrun
+Group nobody
+
+
+#ServerAdmin you@your.address # Not implemented yet
+#ServerName localhost:1344 # Not implemented yet
+
+TmpDir /var/tmp
+MaxMemObject 131072
+
+ServerLog @prefix@/var/log/server.log
+AccessLog @prefix@/var/log/access.log
+#DebugLevel 3
+
+ModulesDir @prefix@/lib/c_icap
+Module logger sys_logger.so
+Module perl_handler perl_handler.so
+
+sys_logger.Prefix "C-ICAP:"
+sys_logger.Facility local1
+
+##Specify wich logger to use......
+#Logger sys_logger
+Logger file_logger
+
+## AclControlers example. The default_acl is the buildin acl controller
+## To load an extrernal access controller named my_acl.so use:
+#Module access_controller  my_acl.so
+
+## This parameter needed to specify the order of used acl controllers
+## If not specified access control will be disabled
+#AclControllers default_acl
+
+## An example of acl lists for default_acl controller.
+## acl and icap_access  are aliases for default_acl.acl and default_acl.icap_access 
+#acl localnet_options src 192.168.1.0/255.255.255.0 type options
+#acl localnet_respmod src 192.168.1.0/255.255.255.0 type respmod
+#acl localnet src 192.168.1.0/255.255.255.0
+##Use the folllowing to demand use of username ......
+##acl localnet src 192.168.1.0/255.255.255.0 user *
+#acl externalnet src 0.0.0.0/0.0.0.0
+#acl barbarian src 192.168.1.5
+
+##An example to specify access to server
+#icap_access deny barbarian
+#icap_access allow localnet_options
+#icap_access allow localnet_respmod
+#icap_access allow localnet
+## http_auth mean that the icap server must try to authenticate the request
+## using the http headers ....
+#icap_access  http_auth localnet
+#icap_access deny externalnet
+
+#Also you can specify which hosts to log or not.
+# Comment out the folowing two lines to log only the external net
+#icap_access nolog localnet
+#icap_access log externalnet
+
+
+
+##An example for authentication methods ....
+## To load an extarnal authentication method module named my_authmethod.so  use:
+#Module auth_method my_authmethod.so
+
+##The following parameter needed to specify the order of authenticators for
+##specific authentication method. file_basic is a buildin authenticator
+##for buildin basic authentication method (Not implemented yet......) ......
+#AuthMethod basic file_basic 
+
+
+ServicesDir @prefix@/lib/c_icap
+Service echo_module srv_echo.so
+Service squard_module srv_sguard.so
+Service antivirus_module srv_clamav.so
+
+
+# Antivirus module settings
+# For allowed file types or groups of file types look at  c-icap.magic
+srv_clamav.ScanFileTypes TEXT DATA EXECUTABLE ARCHIVE GIF JPEG MSOFFICE
+#The percentage of data to sent if the downloaded file exceeds the StartSendPercentDataAfter size
+srv_clamav.SendPercentData 5
+srv_clamav.StartSendPercentDataAfter 2M
+
+# The Maximum object to be scanned.
+srv_clamav.MaxObjectSize  5M
+#The directory which clamav library will use as temporary.
+#srv_clamav.ClamAvTmpDir /var/tmp
+#Sets the maximum number of files in archive.)i Set it to 0 to disable it
+srv_clamav.ClamAvMaxFilesInArchive 0
+#Sets the maximal archived file size. Set it to 0 to disable it.
+srv_clamav.ClamAvMaxFileSizeInArchive 100M
+#The maximal recursion level.Set it to 0 to disable it.
+srv_clamav.ClamAvMaxRecLevel 5
+
+# And here the viralator-like mode.
+# where to save documents
+srv_clamav.VirSaveDir /srv/www/htdocs/downloads/
+# from where the documents can be retrieved (you can find the get_file.pl script in contrib dir)
+srv_clamav.VirHTTPServer  "http://fortune/cgi-bin/get_file.pl?usename=%f&remove=1&file="
+# The refresh  rate....
+srv_clamav.VirUpdateTime   15
+# For which filetypes the "virelator like mode" will be used.
+srv_clamav.VirScanFileTypes ARCHIVE EXECUTABLE
