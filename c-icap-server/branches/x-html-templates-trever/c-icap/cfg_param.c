@@ -27,6 +27,7 @@
 #include "module.h"
 #include "filetype.h"
 #include "cfg_param.h"
+#include "commands.h"
 
 #define LINESIZE 512
 #define MAX_DIRECTIVE_SIZE 80
@@ -69,6 +70,8 @@ int MAX_FREE_SERVERS = 60;
 int MAX_REQUESTS_BEFORE_REALLOCATE_MEM = 100;
 int MAX_REQUESTS_PER_CHILD = 0;
 int DAEMON_MODE = 1;
+char *TEMPLATE_DIR = NULL;
+char *TEMPLATE_DEF_LANG = NULL;
 
 extern char *SERVER_LOG_FILE;
 extern char *ACCESS_LOG_FILE;
@@ -142,6 +145,8 @@ static struct conf_entry conf_variables[] = {
      {"icap_access", NULL, cfg_acl_access, NULL},
      {"AuthMethod", NULL, cfg_set_auth_method, NULL},
      {"Include", NULL, cfg_include_config_file, NULL},
+     {"TemplateDir", &TEMPLATE_DIR, intl_cfg_set_str, NULL},
+     {"TemplateDefaultLang", &TEMPLATE_DEF_LANG, intl_cfg_set_str, NULL},
      {NULL, NULL, NULL, NULL}
 };
 

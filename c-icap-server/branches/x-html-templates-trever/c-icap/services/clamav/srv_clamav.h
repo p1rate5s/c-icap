@@ -3,8 +3,7 @@
 
 #define VIRALATOR_MODE
 
-
-typedef struct av_req_data{
+typedef struct av_req_data {
      ci_simple_file_t *body;
      request_t *req;
      int must_scanned ;
@@ -12,6 +11,7 @@ typedef struct av_req_data{
      int virus_check_done;
      char *virus_name;
      ci_membuf_t *error_page;
+     int html_started;
 #ifdef VIRALATOR_MODE
      time_t last_update;
      char *requested_filename;
@@ -24,7 +24,7 @@ typedef struct av_req_data{
 	  int sizelimit;
 	  int mode;
      } args;
-}av_req_data_t;
+} av_req_data_t;
 
 enum {NO_SCAN=0,SCAN,VIR_SCAN};
 
