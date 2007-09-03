@@ -11,8 +11,8 @@ typedef struct av_req_data {
      int virus_check_done;
      char *virus_name;
      ci_membuf_t *error_page;
-     int html_started;
 #ifdef VIRALATOR_MODE
+     int html_started;
      time_t last_update;
      char *requested_filename;
      int page_sent;
