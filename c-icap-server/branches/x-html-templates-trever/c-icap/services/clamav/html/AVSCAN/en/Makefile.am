@@ -1,0 +1,10 @@
+htmlendir = $(pkgdatadir)/html/AVSCAN/en
+
+EXTRA_DIST = \
+        $(htmlen_DATA)
+
+htmlen_DATA =   NONVIRALATOR_UNSAFE \
+		PROGRESS_BEGIN \
+		PROGRESS_INCREMENTAL \
+		PROGRESS_SAFE_FINISHED \
+		PROGRESS_UNSAFE_FINISHED

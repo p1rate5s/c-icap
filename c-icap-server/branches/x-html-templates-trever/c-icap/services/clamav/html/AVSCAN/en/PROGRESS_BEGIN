@@ -1,0 +1,30 @@
+<html><head></head><body>
+<div id="ex" style="position:relative;width:468px;background:#eeeeee;border:3px double #000000;">
+<div id="progressContainer" style="background-color:#cccccc;border:1px solid black;height:30px;width:300px;padding:0px;" align="left">
+<div id="progressBar" style="position:relative;top:0px;left:0px;background-color:#333333;height:30px;width:0px;padding-top:5px;padding:0px;">
+<div id="progressPerInd" style="position:relative;top:0px;left:0px;color:#f0ffff;height:30px;text-align:center;font:bold;padding:0px;padding-top:5px;">
+</div></div></div>
+
+
+<script type="text/javascript">
+var progressPercent;
+
+function progressInit()
+{
+	document.getElementById("progressPerInd").innerHTML="";
+	document.getElementById("progressBar").style.width=0;
+	progressPercent=0;
+}
+
+function progressSet(value)
+{
+   i=value*3;
+   if (i<=(300))
+   {
+	if (i>40) document.getElementById("progressPerInd").innerHTML=parseInt(value)+"%%";
+	document.getElementById("progressBar").style.width=i+"px";
+   }
+}
+
+progressInit();
+</script>

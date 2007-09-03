@@ -1,0 +1,3 @@
+<script type="text/javascript">progressSet(%r/%e*100);</script>
+<noscript>Downloaded %r bytes of %e of data<br></noscript>
+
