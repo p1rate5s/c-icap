@@ -72,6 +72,9 @@ static int *scangroups = NULL;
 char *VIR_SAVE_DIR = NULL;
 char *VIR_HTTP_SERVER = NULL;
 int VIR_UPDATE_TIME = 15;
+char *TEMPLATE_DIR = NULL;
+char *TEMPLATE_DEF_LANG = NULL;
+
 
 /*srv_clamav service extra data ... */
 service_extra_data_t *srv_clamav_xdata = NULL;
@@ -131,6 +134,8 @@ static struct conf_entry conf_variables[] = {
      {"VirHTTPServer", &VIR_HTTP_SERVER, ci_cfg_set_str, NULL},
      {"VirUpdateTime", &VIR_UPDATE_TIME, ci_cfg_set_int, NULL},
      {"VirScanFileTypes", NULL, cfg_ScanFileTypes, NULL},
+     {"TemplateDir", &TEMPLATE_DIR, intl_cfg_set_str, NULL},
+     {"TemplateDefaultLang", &TEMPLATE_DEF_LANG, intl_cfg_set_str, NULL},
 #endif
      {NULL, NULL, NULL, NULL}
 };
