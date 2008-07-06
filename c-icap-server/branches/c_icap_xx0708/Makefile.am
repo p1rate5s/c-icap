@@ -64,7 +64,6 @@ pkginclude_HEADERS = $(ALL_INCS)
 #sysconf_DATA = c-icap.conf c-icap.magic
 
 install-data-local:
-	$(INSTALL) c-icap-config $(DESTDIR)$(bindir)/c-icap-config
 	$(mkinstalldirs) $(DESTDIR)$(CONFIGDIR);
 	$(INSTALL) c-icap.conf $(DESTDIR)$(CONFIGDIR)/c-icap.conf.default
 	$(INSTALL) c-icap.magic $(DESTDIR)$(CONFIGDIR)/c-icap.magic.default
