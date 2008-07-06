@@ -76,7 +76,7 @@ install-data-local:
 	chgrp nobody $(DESTDIR)$(SOCKDIR)
 	chmod 775 $(DESTDIR)$(SOCKDIR)
 
-EXTRA_DIST= RECONF INSTALL.txt config-w32.h makefile.w32 c-icap.conf c_icap_dll.mak c-icap.conf.in c-icap.magic  c_icap.mak c_icap.def \
+EXTRA_DIST= RECONF INSTALL.txt include/config-w32.h makefile.w32 c-icap.conf c_icap_dll.mak c-icap.conf.in c-icap.magic  c_icap.mak c_icap.def \
              contrib/get_file.pl contrib/convert_old_magic.pl \
              winnt_server.c  os/win32/dll_entry.c os/win32/makefile.w32 os/win32/net_io.c os/win32/proc_mutex.c\
              os/win32/shared_mem.c os/win32/threads.c os/win32/utilfunc.c
