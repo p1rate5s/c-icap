@@ -74,7 +74,7 @@ void ci_strtime_rfc822(char *buf)
 
 int ci_mktemp_file(char *dir, char *template, char *filename)
 {
-     strncpy(filename, dir, CI_FILENAME_LEN - sizeof(template) - 1);
+     strncpy(filename, dir, CI_FILENAME_LEN - strlen(template) - 1);
      strcat(filename, template);
      return mkstemp(filename);
 }
