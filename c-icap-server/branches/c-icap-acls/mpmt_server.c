@@ -806,8 +806,8 @@ void child_main(int sockfd, int pipefd)
 /*****************************************************************************************/
 /*Main process functions                                                                 */
 
-//#define MULTICHILD
-#undef MULTICHILD
+#define MULTICHILD
+//#undef MULTICHILD
 
 int start_child(int fd)
 {
