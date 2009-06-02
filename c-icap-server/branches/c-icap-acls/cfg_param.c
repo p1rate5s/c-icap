@@ -100,7 +100,7 @@ int cfg_include_config_file(char *directive, char **argv, void *setdata);
 
 /*The following 2 functions defined in access.c file*/
 int cfg_acl_add(char *directive, char **argv, void *setdata);
-int cfg_acl_access(char *directive, char **argv, void *setdata);
+int cfg_default_acl_access(char *directive, char **argv, void *setdata);
 /****/
 
 struct sub_table {
@@ -145,7 +145,8 @@ static struct ci_conf_entry conf_variables[] = {
      {"MaxMemObject", NULL, cfg_set_body_maxmem, NULL}, /*Set library's body max mem */
      {"AclControllers", NULL, cfg_set_acl_controllers, NULL},
      {"acl", NULL, cfg_acl_add, NULL},
-     {"icap_access", NULL, cfg_acl_access, NULL},
+     {"icap_access", NULL, cfg_default_acl_access, NULL},
+     {"client_access", NULL, cfg_default_acl_access, NULL},
      {"AuthMethod", NULL, cfg_set_auth_method, NULL},
      {"Include", NULL, cfg_include_config_file, NULL},
      {NULL, NULL, NULL, NULL}
@@ -787,6 +788,7 @@ void system_reconfigure()
      ci_debug_printf(1, "Going to reconfigure system!\n");
      system_shutdown();
      reset_conf_tables();
+     ci_acl_reset();
      ci_debug_printf(1, "All resources released. Going to reload!\n");
      init_modules();
 

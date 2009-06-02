@@ -72,17 +72,8 @@ typedef struct  access_control_module{
      int (*init_access_controller)(struct ci_server_conf *server_conf);
      int (*post_init_access_controller)(struct ci_server_conf *server_conf);
      void (*release_access_controller)();
-     int (*client_access)(ci_sockaddr_t *client_address, ci_sockaddr_t *server_address);
-     int (*request_access)(char *dec_user,char *service,int req_type, 
-			                                ci_sockaddr_t *client_address, 
-			                                ci_sockaddr_t *server_address);
-     int (*http_request_access)(char *dec_user,char *service,int req_type, 
-				                        ci_sockaddr_t *client_address, 
-			                                ci_sockaddr_t *server_address);
-     int (*log_access)(char *dec_user,char *service,int req_type, 
-				ci_sockaddr_t *client_address, 
-				ci_sockaddr_t *server_address);
-
+     int (*client_access)(ci_request_t *req);
+     int (*request_access)(ci_request_t *req);
      struct ci_conf_entry *conf_table;
 } access_control_module_t;
 

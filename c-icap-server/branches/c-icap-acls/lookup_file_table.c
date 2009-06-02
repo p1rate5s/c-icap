@@ -424,6 +424,13 @@ int regex_cmp(void *key1,void *key2)
     return regexec(&reg->preg, (char *)key2, 1, pmatch, 0);
 }
 
+int regex_equal(void *key1,void *key2)
+{
+    regmatch_t pmatch[1];
+    struct ci_regex *reg=(struct ci_regex *)key1;
+    return regexec(&reg->preg, (char *)key2, 1, pmatch, 0)==0;
+}
+
 size_t regex_len(void *key)
 {
     return strlen(((const struct ci_regex *)key)->str);
@@ -440,9 +447,10 @@ void regex_free(void *key, ci_mem_allocator_t *allocator)
 
 ci_type_ops_t  ci_regex_ops = {
     regex_dup,
+    regex_free,
     regex_cmp,
     regex_len,
-    regex_free
+    regex_equal
 };
 #endif
 
