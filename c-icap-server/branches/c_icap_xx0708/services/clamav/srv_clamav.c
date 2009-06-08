@@ -360,7 +360,7 @@ int srvclamav_check_preview_handler(char *preview_data, int preview_data_len,
 
      if (preview_data_len) {
 	 if (ci_simple_file_write(data->body, preview_data, preview_data_len,
-				  ci_req_hasalldata(req)) < 0)
+				  ci_req_hasalldata(req)) == CI_ERROR)
 	     return CI_ERROR;
      }
      return CI_MOD_CONTINUE;
