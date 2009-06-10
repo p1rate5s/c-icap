@@ -90,7 +90,7 @@ int echo_init_service(ci_service_xdata_t * srv_xdata,
 /* This function will be called when the service shutdown */
 void echo_close_service() 
 {
-    ci_debug_printf(5,"The service shutdown!\n");
+    ci_debug_printf(5,"Service shutdown!\n");
     /*Nothing to do*/
 }
 
@@ -142,7 +142,7 @@ int echo_check_preview_handler(char *preview_data, int preview_data_len,
 
      /*If there are is a Content-Length header in encupsulated Http object read it
       and display a debug message (used here only for debuging purposes)*/
-     content_len = ci_http_content_lenght(req);
+     content_len = ci_http_content_length(req);
      ci_debug_printf(9, "We expect to read :%" PRINTF_OFF_T " body data\n",
                      content_len);
 
