@@ -108,7 +108,8 @@ char *ACCESS_LOG_FILE="var/log/access.log";
 
 /*char *LOGS_DIR=LOGDIR;*/
 char *SERVER_LOG_FILE = LOGDIR "/cicap-server.log";
-char *ACCESS_LOG_FILE = LOGDIR "/cicap-access.log";
+//char *ACCESS_LOG_FILE = LOGDIR "/cicap-access.log";
+char *ACCESS_LOG_FILE = NULL;
 
 logger_module_t file_logger = {
      "file_logger",
@@ -128,12 +129,19 @@ FILE *server_log = NULL;
 int file_log_open()
 {
 
-     access_log = fopen(ACCESS_LOG_FILE, "a+");
-     server_log = fopen(SERVER_LOG_FILE, "a+");
+    if (ACCESS_LOG_FILE) {
+	 access_log = fopen(ACCESS_LOG_FILE, "a+");
+	 if (!access_log)
+	     return 0;
+	 setvbuf(access_log, NULL, _IONBF, 0);
+    }
+    
+     if (SERVER_LOG_FILE)
+	 server_log = fopen(SERVER_LOG_FILE, "a+");
 
-     if (!access_log || !server_log)
+     if (!server_log)
           return 0;
-     setvbuf(access_log, NULL, _IONBF, 0);
+
      setvbuf(server_log, NULL, _IONBF, 0);
 
      return 1;
