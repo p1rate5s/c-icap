@@ -106,6 +106,28 @@ int ci_http_response_create(ci_request_t * req, int has_reshdr, int has_body)
 }
 
 
+int ci_http_request_create(ci_request_t * req, int has_body)
+{
+     int i = 0;
+     ci_encaps_entity_t **e_list;
+     e_list = req->entities;
+
+     for (i = 0; i < 4; i++) {
+          if (req->entities[i]) {
+               ci_request_release_entity(req, i);
+          }
+     }
+     i = 0;
+     req->entities[i++] = ci_request_alloc_entity(req, ICAP_REQ_HDR, 0);
+     if (has_body)
+          req->entities[i] = ci_request_alloc_entity(req, ICAP_REQ_BODY, 0);
+     else
+          req->entities[i] = ci_request_alloc_entity(req, ICAP_NULL_BODY, 0);
+
+     return 1;
+}
+
+
 char *ci_http_response_add_header(ci_request_t * req, char *header)
 {
      ci_headers_list_t *heads;
@@ -197,4 +219,32 @@ char *ci_http_request(ci_request_t * req)
 char *ci_icap_add_xheader(ci_request_t * req, char *header)
 {
      return ci_headers_add(req->xheaders, header);
+}
+
+int ci_http_request_url(ci_request_t * req, char *buf, int buf_size)
+{
+   ci_headers_list_t *heads;
+   char *str;
+   int i; 
+   /*The request must have the form:
+        GET url HTTP/X.X 
+   */
+    if (!(heads = ci_http_request_headers(req)))
+          return 0;
+
+    str = heads->headers[0];
+
+    if ((str = strchr(str, ' ')) == NULL) { /*Ignore method i*/
+          return 0;
+     }
+     while (*str == ' ') /*ignore spaces*/
+          str++;
+
+     /*copy the url...*/
+     for (i=0; i < buf_size-1 && (str[i] !=' ' && str[i] != '\0' && str[i] != '\n' && str[i] != '\r' && str[i] != '?'); 
+             i++) {
+          buf[i] = str[i]; 
+     }
+     buf[i] = '\0';
+     return i;
 }

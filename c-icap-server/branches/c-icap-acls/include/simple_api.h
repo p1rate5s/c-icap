@@ -268,6 +268,17 @@ CI_DECLARE_FUNC(int)                 ci_http_response_create(ci_request_t *req, 
 
 /**
  \ingroup HTTP
+ \brief Creates a new HTTP request.
+ *
+ * This function is usefull to develop icap clients
+ \param req is a pointer to the current ICAP request object.
+ \param has_body if it is non zero the HTTP request contains HTTP body data
+ \return non zero on success zero otherwise
+ */
+CI_DECLARE_FUNC(int)                 ci_http_request_create(ci_request_t * req, int has_body);
+
+/**
+ \ingroup HTTP
  \brief Returns the value of the Content-Length header of the HTTP response or HTTP request for a 
  * response modification or request modification ICAP requests respectively.
  *
@@ -287,6 +298,18 @@ CI_DECLARE_FUNC(ci_off_t)            ci_http_content_length(ci_request_t *req);
  \return The request line in success or NULL otherwise
  */
 CI_DECLARE_FUNC(char *)              ci_http_request(ci_request_t *req);
+
+/**
+ \ingroup HTTP
+ \brief Returns the URL (e.g "http://www.chtsanti.net") from http request
+ *
+ * It can be used with both request and response modification ICAP requests.
+ \param req is a pointer to the current ICAP request object.
+ \param buf a buffer to store the url
+ \param buf_size the "buf" buffer size
+ \return The bytes written to the "buf" buffer
+ */
+CI_DECLARE_FUNC(int) ci_http_request_url(ci_request_t * req, char *buf, int buf_size);
 
 /**
  \ingroup REQUEST
