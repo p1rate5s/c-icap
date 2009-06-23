@@ -24,6 +24,7 @@ int fmt_gmttime(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_seconds(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_httpclientip(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_httpserverip(ci_request_t *req_data, char *buf,int len, char *param);
+int fmt_http_req_url_o(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_http_req_head_o(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_http_res_head_o(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_icap_req_head(ci_request_t *req_data, char *buf,int len, char *param);
@@ -34,6 +35,7 @@ int fmt_req_http_bytes_rcv(ci_request_t *req_data, char *buf,int len, char *para
 int fmt_req_http_bytes_sent(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_req_body_bytes_rcv(ci_request_t *req_data, char *buf,int len, char *param);
 int fmt_req_body_bytes_sent(ci_request_t *req_data, char *buf,int len, char *param);
+int fmt_req_preview_hex(ci_request_t *req_data, char *buf,int len, char *param);
 
 
 struct ci_fmt_entry GlobalTable [] = {
@@ -46,12 +48,14 @@ struct ci_fmt_entry GlobalTable [] = {
     {"%tl", "Local time", fmt_localtime},
     {"%tg", "GMT time", fmt_gmttime},
     {"%tr", "Response time", fmt_none},
+    {"%hu", "Http request url", fmt_none},
     {"%>hi", "Http request header", fmt_none},
     {"%>ho", "Modified Http request header", fmt_http_req_head_o},
+    {"%huo", "Modified Http request url", fmt_http_req_url_o},
     {"%<hi", "Http reply header", fmt_none},
     {"%<ho", "Modified Http reply header", fmt_http_res_head_o},
-    {"%Hs", "Http status", fmt_none},
-    {"%Hso", "Modified Http status", fmt_none},
+    {"%Hs", "Http reply status", fmt_none},
+    {"%Hso", "Modified Http reply status", fmt_none},
 
     {"%iu", "Icap request url", fmt_request},
     {"%im", "Icap method", fmt_icapmethod},
@@ -67,6 +71,7 @@ struct ci_fmt_entry GlobalTable [] = {
     {"%I", "Bytes received", fmt_req_bytes_rcv},
     {"%O", "Bytes sent", fmt_req_bytes_sent},
 
+    {"%bph", "Body data preview", fmt_req_preview_hex},
     {"%un", "Username", fmt_none}, 
     { NULL, NULL, NULL} 
 };
@@ -358,6 +363,11 @@ int fmt_httpserverip(ci_request_t *req, char *buf,int len, char *param)
   }
 }
 
+int fmt_http_req_url_o(ci_request_t *req, char *buf,int len, char *param)
+{
+     return ci_http_request_url(req, buf, len);
+}
+
 int fmt_http_req_head_o(ci_request_t *req, char *buf,int len, char *param)
 {
   char *s;
@@ -457,4 +467,25 @@ int fmt_req_body_bytes_sent(ci_request_t *req, char *buf,int len, char *param) {
     return snprintf(buf, len, "%" PRINTF_OFF_T , req->body_bytes_out);
 }
 
+int fmt_req_preview_hex(ci_request_t *req, char *buf,int len, char *param)
+{
+    int  i, num, n; 
+    if (req->preview_data.used <= 0) {
+        *buf = '-';
+        return 1;
+    }
 
+    if (param) {
+        num = strtol(param, NULL, 10);
+    }
+    else
+       num = 5;
+    n = 0;
+    for (i=0; i<num && i < req->preview_data.used; i++) {
+         if (req->preview_data.buf[i] >= ' ' && req->preview_data.buf[i] <= '~')
+            buf[n++] = req->preview_data.buf[i]; 
+         else
+	     n += snprintf(buf+n, len-n, "\\x%X",0xFF & (buf[i]));
+    }
+    return n;
+}

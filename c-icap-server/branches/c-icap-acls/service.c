@@ -29,6 +29,7 @@
 #endif
 #include "dlib.h"
 #include "cfg_param.h"
+#include "stats.h"
 #include <errno.h>
 
 
@@ -199,8 +200,10 @@ ci_service_module_t *create_service(char *service_file)
 
 }
 
-void init_extra_data(ci_service_xdata_t * srv_xdata)
+void init_extra_data(ci_service_xdata_t * srv_xdata, char *service)
 {
+     char buf[1024];
+     char stat_group[1024];
      ci_thread_rwlock_init(&srv_xdata->lock);
      strcpy(srv_xdata->ISTag, "ISTag: ");
      strcat(srv_xdata->ISTag, ISTAG "-XXXXXXXXX");
@@ -212,14 +215,50 @@ void init_extra_data(ci_service_xdata_t * srv_xdata)
      srv_xdata->allow_204 = 0;
      srv_xdata->max_connections = 0;
      srv_xdata->xopts = 0;
+
+     snprintf(stat_group, 1023, "Service %s", service);
+     stat_group[1023] = '\0';
+
+     buf[1023] = '\0';
+     snprintf(buf, 1023, "Service %s REQMODS", service);
+     srv_xdata->stat_reqmods = ci_stat_entry_register(buf, STAT_INT64_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s RESPMODS", service);
+     srv_xdata->stat_respmods = ci_stat_entry_register(buf, STAT_INT64_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s OPTIONS", service);
+     srv_xdata->stat_options = ci_stat_entry_register(buf, STAT_INT64_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s ALLOW 204", service);
+     srv_xdata->stat_allow204 = ci_stat_entry_register(buf, STAT_INT64_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s BYTES IN", service);
+     srv_xdata->stat_bytes_in = ci_stat_entry_register(buf, STAT_KBS_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s BYTES OUT", service);
+     srv_xdata->stat_bytes_out = ci_stat_entry_register(buf, STAT_KBS_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s HTTP BYTES IN", service);
+     srv_xdata->stat_http_bytes_in = ci_stat_entry_register(buf, STAT_KBS_T, stat_group);
+     
+     snprintf(buf, 1023, "Service %s HTTP BYTES OUT", service);
+     srv_xdata->stat_http_bytes_out = ci_stat_entry_register(buf, STAT_KBS_T, stat_group);
+     
+     snprintf(buf, 1023, "Service %s BODY BYTES IN", service);
+     srv_xdata->stat_body_bytes_in = ci_stat_entry_register(buf, STAT_KBS_T, stat_group);
+
+     snprintf(buf, 1023, "Service %s BODY BYTES OUT", service);
+     srv_xdata->stat_body_bytes_out = ci_stat_entry_register(buf, STAT_KBS_T, stat_group);
 }
 
 /*Must called only in initialization procedure.
   It is not thread-safe!
 */
-ci_service_module_t *register_service(char *service_file)
+
+
+
+ci_service_module_t *add_service(ci_service_module_t *service)
 {
-     ci_service_module_t *service = NULL;
      struct ci_service_xdata *xdata=NULL;
      struct ci_conf_entry *cfg_table;
 
@@ -245,15 +284,9 @@ ci_service_module_t *register_service(char *service_file)
           exit(-1);
      }
 
-     service = create_service(service_file);
-     if (!service) {
-          ci_debug_printf(1, "Error finding symbol \"service\" in  module %s\n",
-                          service_file);
-          return NULL;
-     }
 
      xdata = &service_extra_data_list[services_num];
-     init_extra_data(xdata);
+     init_extra_data(xdata, service->mod_name);
      if (service->mod_init_service)
           service->mod_init_service(xdata, &CONF);
 
@@ -267,6 +300,19 @@ ci_service_module_t *register_service(char *service_file)
                               MAIN_TABLE);
 
      return service;
+}
+
+ci_service_module_t *register_service(char *service_file)
+{
+     ci_service_module_t *service;
+     service = create_service(service_file);
+     if (!service) {
+          ci_debug_printf(1, "Error finding symbol \"service\" in  module %s\n",
+                          service_file);
+          return NULL;
+     }
+
+  return add_service(service);
 }
 
 
@@ -289,6 +335,17 @@ ci_service_xdata_t *service_data(ci_service_module_t * srv)
                return &(service_extra_data_list[i]);
      }
      return NULL;
+}
+
+extern ci_service_module_t info_service;
+int init_services()
+{
+    int ret =0;
+
+    if (add_service(&info_service) != NULL)
+        ret = 1;
+
+    return ret;
 }
 
 int post_init_services()

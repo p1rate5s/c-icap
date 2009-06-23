@@ -54,17 +54,25 @@ int STAT_HTTP_BYTES_IN = -1;
 int STAT_HTTP_BYTES_OUT = -1;
 int STAT_BODY_BYTES_IN = -1;
 int STAT_BODY_BYTES_OUT = -1;
+int STAT_REQMODS = -1;
+int STAT_RESPMODS = -1;
+int STAT_OPTIONS = -1;
+int STAT_ALLOW204 = -1;
 
 void request_stats_init()
 {
-  STAT_REQUESTS = ci_stat_entry_register("REQUESTS", STAT_INT64_T);
-  STAT_FAILED_REQUESTS = ci_stat_entry_register("FAILED REQUESTS", STAT_INT64_T);
-  STAT_BYTES_IN = ci_stat_entry_register("BYTES IN", STAT_KBS_T);
-  STAT_BYTES_OUT = ci_stat_entry_register("BYTES OUT", STAT_KBS_T);
-  STAT_HTTP_BYTES_IN = ci_stat_entry_register("HTTP BYTES IN", STAT_KBS_T);
-  STAT_HTTP_BYTES_OUT = ci_stat_entry_register("HTTP BYTES OUT", STAT_KBS_T);
-  STAT_BODY_BYTES_IN = ci_stat_entry_register("BODY BYTES IN", STAT_KBS_T);
-  STAT_BODY_BYTES_OUT = ci_stat_entry_register("BODY BYTES OUT", STAT_KBS_T);
+  STAT_REQUESTS = ci_stat_entry_register("REQUESTS", STAT_INT64_T, "General");
+  STAT_REQMODS = ci_stat_entry_register("REQMODS", STAT_INT64_T, "General");
+  STAT_RESPMODS = ci_stat_entry_register("RESPMODS", STAT_INT64_T, "General");
+  STAT_OPTIONS = ci_stat_entry_register("OPTIONS", STAT_INT64_T, "General");
+  STAT_FAILED_REQUESTS = ci_stat_entry_register("FAILED REQUESTS", STAT_INT64_T, "General");
+  STAT_ALLOW204 = ci_stat_entry_register("ALLOW 204", STAT_INT64_T, "General");
+  STAT_BYTES_IN = ci_stat_entry_register("BYTES IN", STAT_KBS_T, "General");
+  STAT_BYTES_OUT = ci_stat_entry_register("BYTES OUT", STAT_KBS_T, "General");
+  STAT_HTTP_BYTES_IN = ci_stat_entry_register("HTTP BYTES IN", STAT_KBS_T, "General");
+  STAT_HTTP_BYTES_OUT = ci_stat_entry_register("HTTP BYTES OUT", STAT_KBS_T, "General");
+  STAT_BODY_BYTES_IN = ci_stat_entry_register("BODY BYTES IN", STAT_KBS_T, "General");
+  STAT_BODY_BYTES_OUT = ci_stat_entry_register("BODY BYTES OUT", STAT_KBS_T, "General");
 }
 
 ci_request_t *newrequest(ci_connection_t * connection)
@@ -432,20 +440,38 @@ void ec_responce(ci_request_t * req, int ec)
      req->bytes_out += len;
 }
 
-void ec_responce_with_istag(ci_request_t * req, int ec)
+int ec_responce_with_istag(ci_request_t * req, int ec)
 {
      char buf[256];
      ci_service_xdata_t *srv_xdata;
      int len;
      srv_xdata = service_data(req->current_service_mod);
+     ci_headers_reset(req->response_header);
+     snprintf(buf, 256, "ICAP/1.0 %d %s",
+              ci_error_code(ec), ci_error_code_string(ec));
+     ci_headers_add(req->response_header, buf);
+     ci_headers_add(req->response_header, "Server: C-ICAP/" VERSION);
+     if (req->keepalive)
+          ci_headers_add(req->response_header, "Connection: keep-alive");
+     else
+          ci_headers_add(req->response_header, "Connection: close");
+
      ci_service_data_read_lock(srv_xdata);
-     snprintf(buf, 256, "ICAP/1.0 %d %s\r\n%s\r\n\r\n",
-              ci_error_code(ec), ci_error_code_string(ec), srv_xdata->ISTag);
+     ci_headers_add(req->response_header, srv_xdata->ISTag);
      ci_service_data_read_unlock(srv_xdata);
-     buf[255] = '\0';
-     len = strlen(buf);
-     ci_write(req->connection->fd, buf, len, TIMEOUT);
+     if (!ci_headers_is_empty(req->xheaders)) {
+	  ci_headers_addheaders(req->response_header, req->xheaders);
+     }
+     ci_response_pack(req);
+
+     len = ci_write(req->connection->fd, 
+		    req->response_header->buf, req->response_header->bufused, 
+		    TIMEOUT);
+     if (len < 0)
+	 return -1;
+
      req->bytes_out += len;
+     return len;
 }
 
 extern char MY_HOSTNAME[];
@@ -1070,7 +1096,8 @@ int do_request(ci_request_t * req)
                         mod_check_preview_handler(req->preview_data.buf,
                                                   req->preview_data.used, req);
                     if (res == CI_MOD_ALLOW204) {
-                         ec_responce(req, EC_204);
+			 if (ec_responce_with_istag(req, EC_204) < 0)
+			     ret_status = CI_ERROR;
 			 req->return_code = EC_204;
                          break; //Need no any modification.
                     }
@@ -1091,7 +1118,10 @@ int do_request(ci_request_t * req)
                    req->current_service_mod->mod_check_preview_handler(NULL, 0,
                                                                        req);
                if (req->allow204 && res == CI_MOD_ALLOW204) {
-                    ec_responce_with_istag(req, EC_204);
+		   if (ec_responce_with_istag(req, EC_204) < 0) {
+		       ret_status = CI_ERROR;
+		       break;
+		   }
 		    req->return_code = EC_204;
                     /*And now parse body data we read and data the client going to send us,
                        but do not pass them to the service */
@@ -1121,7 +1151,8 @@ int do_request(ci_request_t * req)
 		    }
 */
                if (req->allow204 && res == CI_MOD_ALLOW204) {
-                    ec_responce_with_istag(req, EC_204);
+		    if (ec_responce_with_istag(req, EC_204))
+		        ret_status = CI_ERROR;
 		    req->return_code = EC_204;
                     break;      //Need no any modification.
                }
@@ -1150,6 +1181,7 @@ int do_request(ci_request_t * req)
 int process_request(ci_request_t * req)
 {
     int res;
+    ci_service_xdata_t *srv_xdata;
     res = do_request(req);
    
     if (!STATS)
@@ -1157,17 +1189,55 @@ int process_request(ci_request_t * req)
 
     if (res<0 && req->request_header->bufused == 0) /*Did not read anything*/
 	return res;
+
+    srv_xdata = service_data(req->current_service_mod);
 	
     STATS_LOCK();
     if (STAT_REQUESTS >= 0) STATS_INT64_INC(STAT_REQUESTS,1);
+
+    if (req->type == ICAP_REQMOD) {
+      STATS_INT64_INC(STAT_REQMODS, 1);
+      STATS_INT64_INC(srv_xdata->stat_reqmods, 1);
+    }
+    else if (req->type == ICAP_RESPMOD) {
+      STATS_INT64_INC(STAT_RESPMODS, 1);
+      STATS_INT64_INC(srv_xdata->stat_respmods, 1);
+    }
+    else if (req->type == ICAP_OPTIONS) {
+      STATS_INT64_INC(STAT_OPTIONS, 1);
+      STATS_INT64_INC(srv_xdata->stat_options, 1);
+    }
+
     if (res <0 && STAT_FAILED_REQUESTS >= 0)
         STATS_INT64_INC(STAT_FAILED_REQUESTS,1);
+
+    if (req->return_code == EC_204) {
+      STATS_INT64_INC(STAT_ALLOW204, 1);
+      STATS_INT64_INC(srv_xdata->stat_allow204, 1);
+    }
+
+
     if (STAT_BYTES_IN >= 0) STATS_KBS_INC(STAT_BYTES_IN, req->bytes_in);
     if (STAT_BYTES_OUT >= 0) STATS_KBS_INC(STAT_BYTES_OUT, req->bytes_out);
     if (STAT_HTTP_BYTES_IN >= 0) STATS_KBS_INC(STAT_HTTP_BYTES_IN, req->http_bytes_in);
     if (STAT_HTTP_BYTES_OUT >= 0) STATS_KBS_INC(STAT_HTTP_BYTES_OUT, req->http_bytes_out);
     if (STAT_BODY_BYTES_IN >= 0) STATS_KBS_INC(STAT_BODY_BYTES_IN, req->body_bytes_in);
     if (STAT_BODY_BYTES_OUT >= 0) STATS_KBS_INC(STAT_BODY_BYTES_OUT, req->body_bytes_out);
+
+
+    if (srv_xdata->stat_bytes_in >= 0) 
+      STATS_KBS_INC(srv_xdata->stat_bytes_in, req->bytes_in);
+    if (srv_xdata->stat_bytes_out >= 0) 
+      STATS_KBS_INC(srv_xdata->stat_bytes_out, req->bytes_out);
+    if (srv_xdata->stat_http_bytes_in >= 0) 
+      STATS_KBS_INC(srv_xdata->stat_http_bytes_in, req->http_bytes_in);
+    if (srv_xdata->stat_http_bytes_out >= 0) 
+      STATS_KBS_INC(srv_xdata->stat_http_bytes_out, req->http_bytes_out);
+    if (srv_xdata->stat_body_bytes_in >= 0) 
+      STATS_KBS_INC(srv_xdata->stat_body_bytes_in, req->body_bytes_in);
+    if (srv_xdata->stat_body_bytes_out >= 0) 
+      STATS_KBS_INC(srv_xdata->stat_body_bytes_out, req->body_bytes_out);
+
     STATS_UNLOCK();
 
     return res;
