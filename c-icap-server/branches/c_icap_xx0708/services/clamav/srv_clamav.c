@@ -547,6 +547,11 @@ int init_virusdb()
      if (!virusdb)
           return 0;
 #ifdef HAVE_LIBCLAMAV_095
+     if((ret = cl_init(CL_INIT_DEFAULT))) {
+        ci_debug_printf(1, "!Can't initialize libclamav: %s\n", cl_strerror(ret));
+        return 0;
+    }
+
      if(!(virusdb->db = cl_engine_new())) {
 	 ci_debug_printf(1, "Clamav DB load: Cannot create new clamav engine\n");
 	 return 0;
