@@ -45,66 +45,115 @@ struct ci_conf_entry acl_conf_variables[] = {
   dst_ip: srvip
 */
 
-const void *get_user(ci_request_t *req, char *param){
+void *get_user(ci_request_t *req, char *param){
     return req->user;
 }
-const void *get_service(ci_request_t *req, char *param){
+
+void *get_service(ci_request_t *req, char *param){
     return req->service;
 }
 
-const void *get_reqtype(ci_request_t *req, char *param){
+void *get_reqtype(ci_request_t *req, char *param){
     return ci_method_string(req->type);
 }
 
-const void *get_port(ci_request_t *req, char *param){
+void *get_port(ci_request_t *req, char *param){
     return &req->connection->srvaddr.ci_sin_port;
 }
 
-const void *get_client_ip(ci_request_t *req, char *param){
+void *get_client_ip(ci_request_t *req, char *param){
     return &(req->connection->claddr);
 }
 
-const void *get_srv_ip(ci_request_t *req, char *param){
+void *get_srv_ip(ci_request_t *req, char *param){
     return &(req->connection->srvaddr);
 }
+
+#if HAVE_REGEX
+/*They are implemented at the bottom of this file ...*/
+void *get_icap_header(ci_request_t *req, char *param);
+void *get_icap_response_header(ci_request_t *req, char *param);
+void *get_http_req_header(ci_request_t *req, char *param);
+void *get_http_resp_header(ci_request_t *req, char *param);
+
+void free_icap_header(ci_request_t *req,void *param);
+void free_icap_response_header(ci_request_t *req, void *param);
+void free_http_req_header(ci_request_t *req, void *param);
+void free_http_resp_header(ci_request_t *req, void *param);
+
+#endif
 
 ci_acl_type_t acl_user={
      "user",
      get_user,
+     NULL,
      &ci_str_ops
 };
 
 ci_acl_type_t acl_service={
      "service",
      get_service,
+     NULL,
      &ci_str_ops
 };
 
 ci_acl_type_t acl_req_type={
      "type",
      get_reqtype,
+     NULL,
      &ci_str_ops
 };
 
 ci_acl_type_t acl_tcp_port={
      "port",
      get_port,
+     NULL,
      &ci_int32_ops
 };
 
 ci_acl_type_t acl_tcp_src={
      "src",
      get_client_ip,
+     NULL,
      &ci_ip_sockaddr_ops
 };
 
 ci_acl_type_t acl_tcp_srvip={
      "srvip",
      get_srv_ip,
+     NULL,
      &ci_ip_sockaddr_ops
 };
 
+#if HAVE_REGEX
+ci_acl_type_t acl_icap_header = {
+     "icap_header",
+     get_icap_header,
+     free_icap_header,
+     &ci_regex_ops
+};
 
+ci_acl_type_t acl_icap_resp_header = {
+     "icap_resp_header",
+     get_icap_response_header,
+     free_icap_response_header,
+     &ci_regex_ops
+};
+
+ci_acl_type_t acl_http_req_header = {
+     "http_req_header",
+     get_http_req_header,
+     free_http_req_header,
+     &ci_regex_ops
+};
+
+ci_acl_type_t acl_http_resp_header = {
+     "http_resp_header",
+     get_http_resp_header,
+     free_http_resp_header,
+     &ci_regex_ops
+};
+#endif
 
 /********************************************************************************/
 /*   ci_access_entry api   functions                                            */
@@ -197,9 +246,10 @@ ci_acl_spec_t *  ci_acl_spec_new(char *name, char *type, char *param, struct ci_
 
      strncpy(spec->name, name, MAX_NAME_LEN);
      spec->name[MAX_NAME_LEN] = '\0';
-     if(param) 
+     if(param) {
 	 if (!(spec->parameter = strdup(param)))
 	     return NULL;/*leak but if a simple strdup fails who cares....*/
+     }
      else
 	 spec->parameter = NULL;
      spec->type = acl_type;
@@ -368,12 +418,20 @@ int request_match_specslist(ci_request_t *req, const struct ci_specs_list *spec_
 {
     const ci_acl_spec_t *spec;
     const ci_acl_type_t *type;
-    
+    void *test_data;
+
     while (spec_list!=NULL) {
 	spec = spec_list->spec;
 	type = spec->type;
-	if (!spec_data_check(spec, type->get_test_data(req, spec->parameter)))
+	test_data = type->get_test_data(req, spec->parameter);
+	if (!test_data) {
+	    ci_debug_printf(9,"No data to test for %s\n", spec->parameter);
 	    return 0;
+	}
+	if (!spec_data_check(spec, test_data))
+	    return 0;
+	if (type->free_test_data)
+	    type->free_test_data(req, test_data);
 	spec_list=spec_list->next;
     }
     return 1;
@@ -413,12 +471,17 @@ extern ci_acl_type_t acl_tcp_srvip;
 
 static int acl_load_defaults()
 {
-     ci_acl_typelist_add(&types_list,&acl_tcp_port);
-     ci_acl_typelist_add(&types_list,&acl_service);
-     ci_acl_typelist_add(&types_list,&acl_req_type);
-     ci_acl_typelist_add(&types_list,&acl_user);
-     ci_acl_typelist_add(&types_list,&acl_tcp_src);
-     ci_acl_typelist_add(&types_list,&acl_tcp_srvip);
+     ci_acl_typelist_add(&types_list, &acl_tcp_port);
+     ci_acl_typelist_add(&types_list, &acl_service);
+     ci_acl_typelist_add(&types_list, &acl_req_type);
+     ci_acl_typelist_add(&types_list, &acl_user);
+     ci_acl_typelist_add(&types_list, &acl_tcp_src);
+     ci_acl_typelist_add(&types_list, &acl_tcp_srvip);
+     ci_acl_typelist_add(&types_list, &acl_icap_header);
+     ci_acl_typelist_add(&types_list, &acl_icap_resp_header);
+     ci_acl_typelist_add(&types_list, &acl_http_req_header);
+     ci_acl_typelist_add(&types_list, &acl_http_resp_header);
+
      return 1;
 }
 
@@ -462,7 +525,7 @@ int cfg_acl_add(char *directive, char **argv, void *setdata)
 	 *s='\0';
 	 param=s+1;
 	 if((s=strchr(param,'}')) != NULL)
-	     s= '\0';
+	     *s= '\0';
      }
 
      if ((spec=ci_acl_spec_search(specs_list, acl_name)) != NULL){
@@ -490,3 +553,94 @@ int cfg_acl_add(char *directive, char **argv, void *setdata)
      return 1;
 }
 
+/******************************************************/
+/* Some acl_type methods implementation               */
+#if HAVE_REGEX
+
+char *get_header(ci_headers_list_t *headers, char *head)
+{
+    char *val, *buf;
+    int i;
+
+    if(!headers || !head)
+	return NULL;
+
+    if (!(val = ci_headers_value(headers, head)))
+	return NULL;
+
+    if (!headers->packed) /*The headers are not packed, so it is NULL terminated*/
+	return val;
+
+    /*assume that an 1024 buffer is enough for a header value*/
+    if (!(buf = ci_buffer_alloc(1024)))
+	return NULL;
+
+     for(i=0;i<1023 && *val!= '\0' && *val != '\r' && *val!='\n'; i++,val++) 
+        buf[i] = *val;
+     buf[1023]='\0';
+
+     return buf;
+}
+
+void release_header_value(ci_headers_list_t *headers, char *head)
+{
+    if (headers->packed) /*The headers are packed, we have allocated buffer*/
+	ci_buffer_free(head);
+}
+
+void *get_icap_header(ci_request_t *req, char *param)
+{
+    ci_headers_list_t *heads;
+    heads = req->request_header;
+    return (void *)get_header(heads, param);
+}
+
+void free_icap_header(ci_request_t *req, void *param)
+{
+    ci_headers_list_t *heads;
+    heads = req->request_header;
+    release_header_value(heads, param);
+}
+
+void *get_icap_response_header(ci_request_t *req, char *param)
+{
+    ci_headers_list_t *heads;
+    heads = req->response_header;
+    return (void *)get_header(heads, param);
+}
+
+void free_icap_response_header(ci_request_t *req, void *param)
+{
+    ci_headers_list_t *heads;
+    heads = req->response_header;
+    release_header_value(heads, param);
+}
+
+void *get_http_req_header(ci_request_t *req, char *param)
+{
+    ci_headers_list_t *heads;
+    heads = ci_http_request_headers(req);
+    return (void *)get_header(heads, param);
+}
+void free_http_req_header(ci_request_t *req, void *param)
+{
+    ci_headers_list_t *heads;
+    heads = ci_http_request_headers(req);
+    release_header_value(heads, param);
+}
+
+void *get_http_resp_header(ci_request_t *req, char *param)
+{
+    ci_headers_list_t *heads;
+    heads = ci_http_response_headers(req);
+    return (void *)get_header(heads, param);
+}
+
+void free_http_resp_header(ci_request_t *req, void *param)
+{
+    ci_headers_list_t *heads;
+    heads = ci_http_response_headers(req);
+    release_header_value(heads, param);
+}
+
+#endif
