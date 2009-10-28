@@ -3,6 +3,8 @@
 #include "net_io.h"
 #include "mem.h"
 #include "lookup_table.h"
+#include "cfg_param.h"
+#include "filetype.h"
 #include "debug.h"
 #ifdef HAVE_REGEX_H
 #include <regex.h>
@@ -19,11 +21,15 @@ void *stringdup(const char *str, ci_mem_allocator_t *allocator)
 
 int stringcmp(void *key1,void *key2)
 {
+    if (!key2)
+        return -1;
     return strcmp((char *)key1,(char *)key2);
 }
 
 int stringequal(void *key1,void *key2)
 {
+    if (!key2)
+        return 0;
     return strcmp((char *)key1,(char *)key2)==0;
 }
 
@@ -165,6 +171,8 @@ int regex_cmp(void *key1,void *key2)
 {
     regmatch_t pmatch[1];
     struct ci_regex *reg=(struct ci_regex *)key1;
+    if (!key2)
+        return -1;
     return regexec(&reg->preg, (char *)key2, 1, pmatch, 0);
 }
 
@@ -172,6 +180,8 @@ int regex_equal(void *key1,void *key2)
 {
     regmatch_t pmatch[1];
     struct ci_regex *reg=(struct ci_regex *)key1;
+    if (!key2)
+        return 0;
     return regexec(&reg->preg, (char *)key2, 1, pmatch, 0)==0;
 }
 
@@ -197,6 +207,81 @@ ci_type_ops_t  ci_regex_ops = {
     regex_equal
 };
 #endif
+
+/*filetype operators*/
+void *datatype_dup(const char *str, ci_mem_allocator_t *allocator)
+{
+    int type;
+    unsigned int  *val = allocator->alloc(allocator,sizeof(unsigned int));
+    if ((type = ci_magic_type_id(str)) >= 0) {
+      *val = type;
+    }
+    else if ( (type = ci_magic_group_id(str)) >= 0) {
+       *val = type;
+       *val = *val << 16;
+    }
+    else {
+         allocator->free(allocator, val);
+         val = NULL;
+    }
+ 
+    return (void *)val;
+}
+
+int datatype_cmp(void *key1, void *key2)
+{
+    unsigned int type = *(unsigned int *)key1;
+
+    if (!key2)
+        return -1;
+
+    if ( (0xFFFF0000 & type) == 0)
+       return (*(unsigned int *)key1 - *(unsigned int *)key2);
+    else { /*type is group check if key2 belongs to group*/
+         type = type >> 16;
+         if (ci_magic_group_check(*(unsigned int *)key2, type))
+             return 0;
+         else 
+             return 1;
+    }
+}
+
+int datatype_equal(void *key1, void *key2)
+{
+    unsigned int type = *(unsigned int *)key1;
+
+    if (!key2)
+        return 0;
+
+    if ( (0xFFFF0000 & type) == 0)
+        return *(unsigned int *)key1 == *(unsigned int *)key2;
+    else { /*type is group check if key2 belongs to group*/
+         type = type >> 16;
+         if (ci_magic_group_check(*(unsigned int *)key2, (int)type))
+             return 1;
+         else
+             return 0;
+    }
+}
+
+size_t datatype_len(void *key)
+{
+    return sizeof(unsigned int);
+}
+
+void datatype_free(void *key, ci_mem_allocator_t *allocator)
+{
+    /*nothing*/
+     allocator->free(allocator, key);
+}
+   
+ci_type_ops_t  ci_datatype_ops = {
+    datatype_dup,
+    datatype_free,
+    datatype_cmp,
+    datatype_len,
+    datatype_equal
+};
 
 /*IP operators*/
 #ifdef HAVE_IPV6
@@ -342,6 +427,10 @@ int ip_equal(void *ref_key, void *key_check) {
     const ci_ip_t *ip_ref = (ci_ip_t *)ref_key;
     ci_ip_t *ip_check = (ci_ip_t *)key_check;
     char buf[128],buf1[128],buf2[128];
+
+    if (!ip_check)
+        return 0;
+
     ci_debug_printf(9,"going to check addresses  ip address: %s %s/%s\n",
 		    ci_inet_ntoa(ip_check->family,&ip_check->address, buf, 128),
 		    ci_inet_ntoa(ip_ref->family,&ip_ref->address, buf1, 128),
@@ -374,6 +463,10 @@ int ip_sockaddr_equal(void *ref_key, void *key_check) {
     const ci_ip_t *ip_ref = (ci_ip_t *)ref_key;
     ci_sockaddr_t *ip_check = (ci_sockaddr_t *)key_check;
     char buf[128],buf1[128],buf2[128];
+
+    if (!ip_check)
+        return 0;
+
     ci_debug_printf(9,"going to check addresses  ip address: %s %s/%s\n",
 		    ci_inet_ntoa(ip_check->ci_sin_family,ip_check->ci_sin_addr, buf, 128),
 		    ci_inet_ntoa(ip_ref->family,&ip_ref->address, buf1, 128),
