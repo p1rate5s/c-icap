@@ -25,7 +25,7 @@
 #include "acl.h"
 #include "access.h"
 #include "mem.h"
-
+#include "filetype.h"
 
 
 int cfg_acl_add(char *directive, char **argv, void *setdata);
@@ -82,6 +82,10 @@ void free_http_req_header(ci_request_t *req, void *param);
 void free_http_resp_header(ci_request_t *req, void *param);
 
 #endif
+
+void *get_data_type(ci_request_t *req, char *param);
+void free_data_type(ci_request_t *req,void *param);
+
 
 ci_acl_type_t acl_user={
      "user",
@@ -154,6 +158,13 @@ ci_acl_type_t acl_http_resp_header = {
      &ci_regex_ops
 };
 #endif
+
+ci_acl_type_t acl_data_type={
+     "data_type",
+     get_data_type,
+     free_data_type,
+     &ci_datatype_ops
+};
 
 /********************************************************************************/
 /*   ci_access_entry api   functions                                            */
@@ -481,6 +492,7 @@ static int acl_load_defaults()
      ci_acl_typelist_add(&types_list, &acl_icap_resp_header);
      ci_acl_typelist_add(&types_list, &acl_http_req_header);
      ci_acl_typelist_add(&types_list, &acl_http_resp_header);
+     ci_acl_typelist_add(&types_list, &acl_data_type);
 
      return 1;
 }
@@ -644,3 +656,18 @@ void free_http_resp_header(ci_request_t *req, void *param)
 }
 
 #endif
+
+void *get_data_type(ci_request_t *req, char *param){
+    int type, isenc;
+    int *ret_type;
+    type = ci_magic_req_data_type(req, &isenc);
+    if (type < 0)
+        return NULL;
+    ret_type = malloc(sizeof(unsigned int));
+    *ret_type = type;
+    return (void *)ret_type;
+}
+
+void free_data_type(ci_request_t *req,void *param){
+    free(param);
+}
