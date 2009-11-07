@@ -275,8 +275,9 @@ int parse_request(ci_request_t * req, char *buf)
                          }      /*end of parsing args */
                          if (!ci_method_support
                              (req->current_service_mod->mod_type, req->type)
-                             || req->type != ICAP_OPTIONS)
+                             && req->type != ICAP_OPTIONS) {
                               return EC_405;    /* Method not allowed for service. */
+			 }
                     }
                     else {
                          return EC_400;
@@ -316,7 +317,9 @@ int parse_header(ci_request_t * req)
 
      if ((result = get_method(h->buf)) >= 0) {
           req->type = result;
-          request_status = parse_request(req, h->buf);
+          if ((request_status = parse_request(req, h->buf)) != EC_100)
+	      return request_status;
+	 
      }
      else
           return EC_400;
@@ -1037,10 +1040,10 @@ int do_request(ci_request_t * req)
      if (res != EC_100) {
           if (res >= 0)
                ec_responce(req, res);   /*Bad request or Service not found or Server error or what else...... */
-	  req->return_code = res;
+          req->return_code = res;
           req->keepalive = 0;   // Error occured, close the connection ......
-          ci_debug_printf(5, "Error parsing headers :(%d)\n",
-                          req->request_header->bufused);
+          ci_debug_printf(5, "Error %d while parsing headers :(%d)\n",
+			  res ,req->request_header->bufused);
           return CI_ERROR;
      }
 
@@ -1190,7 +1193,15 @@ int process_request(ci_request_t * req)
     if (res<0 && req->request_header->bufused == 0) /*Did not read anything*/
 	return res;
 
+    if (req->return_code == EC_404) {
+        return res;
+    }
+
     srv_xdata = service_data(req->current_service_mod);
+    if (!srv_xdata) {
+        ci_debug_printf(5, "Service not found, statistics not logged.");
+        return res;
+    }
 	
     STATS_LOCK();
     if (STAT_REQUESTS >= 0) STATS_INT64_INC(STAT_REQUESTS,1);
