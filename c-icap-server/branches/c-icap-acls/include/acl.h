@@ -79,14 +79,16 @@ struct ci_access_entry {
      ci_access_entry_t *next;
 };
 
-ci_access_entry_t *ci_access_entry_new(ci_access_entry_t **list, int type);
-const ci_acl_spec_t *ci_access_entry_add_acl(ci_access_entry_t *access_entry, const ci_acl_spec_t *acl);
+CI_DECLARE_FUNC(ci_access_entry_t *) ci_access_entry_new(ci_access_entry_t **list, int type);
+CI_DECLARE_FUNC(void) ci_access_entry_release(ci_access_entry_t *list);
+CI_DECLARE_FUNC(const ci_acl_spec_t *) ci_access_entry_add_acl(ci_access_entry_t *access_entry, const ci_acl_spec_t *acl);
+CI_DECLARE_FUNC(int) ci_access_entry_match_request(ci_access_entry_t *access_entry, ci_request_t *req);
 
 
 /*Inititalizing, reseting and tools acl library functions */
-void ci_acl_init();
-void ci_acl_reset();
-const ci_acl_spec_t *ci_acl_search(char *name);
-const ci_acl_type_t *ci_acl_type_search(char *name);
+CI_DECLARE_FUNC(void) ci_acl_init();
+CI_DECLARE_FUNC(void) ci_acl_reset();
+CI_DECLARE_FUNC(const ci_acl_spec_t *) ci_acl_search(char *name);
+CI_DECLARE_FUNC(const ci_acl_type_t *) ci_acl_type_search(char *name);
 
 #endif/* __ACL_H*/

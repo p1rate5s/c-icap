@@ -83,12 +83,12 @@ void default_acl_release()
 
 int default_acl_client_match(ci_request_t *req)
 {
-    return access_entry_match_request(acl_connection_access_list, req);
+    return ci_access_entry_match_request(acl_connection_access_list, req);
 }
 
 int default_acl_request_match(ci_request_t *req)
 {
-    return access_entry_match_request(acl_access_list, req);
+    return ci_access_entry_match_request(acl_access_list, req);
 }
 
 
