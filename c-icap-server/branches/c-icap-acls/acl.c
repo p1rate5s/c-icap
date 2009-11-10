@@ -448,7 +448,7 @@ int request_match_specslist(ci_request_t *req, const struct ci_specs_list *spec_
     return 1;
 }
 
-int access_entry_match_request(ci_access_entry_t *access_entry, ci_request_t *req)
+int ci_access_entry_match_request(ci_access_entry_t *access_entry, ci_request_t *req)
 {
     struct ci_specs_list *spec_list;
 
