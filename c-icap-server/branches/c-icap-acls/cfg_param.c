@@ -29,6 +29,7 @@
 #include "filetype.h"
 #include "cfg_param.h"
 #include "commands.h"
+#include "acl.h"
 
 #define LINESIZE 8192
 #define MAX_DIRECTIVE_SIZE 80
@@ -432,12 +433,16 @@ int cfg_set_logformat(char *directive, char **argv, void *setdata)
 int file_log_addlogfile(char *file, char *format, char **acls);
 int cfg_set_accesslog(char *directive, char **argv, void *setdata)
 {
+     char **acls = NULL;
      if (argv == NULL || argv[0] == NULL ) {
           ci_debug_printf(1, "Missing arguments in directive %s\n", directive);
           return 0;
      }
+     if (argv[1] != NULL && argv[2] !=NULL) {
+         acls = argv+2;
+     }
      ci_debug_printf(1, "Adding the access logfile %s\n",argv[0]);
-     return file_log_addlogfile(argv[0], argv[1], NULL);
+     return file_log_addlogfile(argv[0], argv[1], acls);
 }
 
 
