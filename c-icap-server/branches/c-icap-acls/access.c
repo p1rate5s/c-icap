@@ -108,11 +108,3 @@ int access_check_request(ci_request_t * req)
      return res;
 }
 
-
-/* Returns CI_ACCESS_DENY to log CI_ACCESS_ALLOW to not log .........*/
-
-int access_check_logging(ci_request_t * req)
-{
-    return access_check_request(req);
-}
-
