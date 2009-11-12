@@ -218,7 +218,7 @@ void ci_access_entry_release(ci_access_entry_t *list)
 
 }
 
-const ci_acl_spec_t *ci_access_entry_add_acl(ci_access_entry_t *access_entry, const ci_acl_spec_t *acl){
+const ci_acl_spec_t *ci_access_entry_add_acl(ci_access_entry_t *access_entry, const ci_acl_spec_t *acl, int negate){
      struct ci_specs_list *spec_list,*spec_entry;
      if (access_entry == NULL)
 	  return NULL;
@@ -228,6 +228,7 @@ const ci_acl_spec_t *ci_access_entry_add_acl(ci_access_entry_t *access_entry, co
 	  return NULL;
 
      spec_entry->next = NULL;
+     spec_entry->negate = negate;
      spec_entry->spec = acl;
      if (access_entry->spec_list == NULL) {
 	  access_entry->spec_list = spec_entry;
@@ -239,6 +240,25 @@ const ci_acl_spec_t *ci_access_entry_add_acl(ci_access_entry_t *access_entry, co
 	  spec_list->next = spec_entry;
      }
      return acl;
+}
+
+int ci_access_entry_add_acl_by_name(ci_access_entry_t *access_entry, char *acl_name){
+     const ci_acl_spec_t *acl;
+     int negate = 0;
+     if (acl_name[0] == '!') {
+	 negate = 1;
+	 acl_name = acl_name + 1;
+     }
+     acl = ci_acl_search(acl_name);
+     if (!acl) {
+	  ci_debug_printf(1, "The acl spec %s does not exists!\n", acl_name);
+	  return 0;
+     }
+     if (ci_access_entry_add_acl(access_entry, acl, negate) == NULL) {
+	 ci_debug_printf(1, "Error adding acl spec %s to the access list!\n", acl_name);
+	 return 0;
+     }
+     return 1;
 }
 
 /*********************************************************************************/
@@ -429,18 +449,25 @@ int request_match_specslist(ci_request_t *req, const struct ci_specs_list *spec_
 {
     const ci_acl_spec_t *spec;
     const ci_acl_type_t *type;
+    int ret, negate;
     void *test_data;
 
+    ret = 1;
     while (spec_list!=NULL) {
 	spec = spec_list->spec;
+	negate = spec_list->negate;
 	type = spec->type;
 	test_data = type->get_test_data(req, spec->parameter);
 	if (!test_data) {
 	    ci_debug_printf(9,"No data to test for %s\n", spec->parameter);
 	    return 0;
 	}
-	if (!spec_data_check(spec, test_data))
+
+	if (!spec_data_check(spec, test_data) && !negate) 	    
 	    return 0;
+	else if (spec_data_check(spec, test_data) && negate) 	    
+	    return 0;
+
 	if (type->free_test_data)
 	    type->free_test_data(req, test_data);
 	spec_list=spec_list->next;

@@ -263,8 +263,11 @@ void file_log_access(ci_request_t *req)
 
     for (lf = ACCESS_LOG_FILES; lf != NULL; lf = lf->next) {
          if (lf->access_log) {
-	     if (lf->access_list && !ci_access_entry_match_request(lf->access_list, req))
+	     if (lf->access_list && !(ci_access_entry_match_request(lf->access_list, req) == CI_ACCESS_ALLOW)) {
+		 ci_debug_printf(6, "access log file %s does not match, skiping\n", lf->file);
 		 continue;
+	     }
+	     ci_debug_printf(6, "Log request to access log file %s\n", lf->file);
              ci_format_text(req, lf->log_fmt, logline, 1024, NULL);
 	     fprintf(lf->access_log,"%s\n", logline); 
 	 }
@@ -289,8 +292,8 @@ void file_log_server(char *server, const char *format, va_list ap)
 int file_log_addlogfile(char *file, char *format, char **acls) 
 {
      char *access_log_file, *access_log_format;
+     char * acl_name;
      struct logfile *lf, *newlf;
-     const ci_acl_spec_t *spec;
      int i;
 
      access_log_file = strdup(file);
@@ -320,18 +323,10 @@ int file_log_addlogfile(char *file, char *format, char **acls)
 	       return 0;
 	  }
 	  for (i=0; acls[i] != NULL; i++) {
-	       spec = ci_acl_search(acls[i]);
-	       if (!spec) {
-  	             ci_debug_printf(1, "Error! Unknown acl entry in  access log file %s declaration!\n",
-				     newlf->file);
-		     ci_access_entry_release(newlf->access_list);
-		     free(newlf->file);
-		     free(newlf);
-		     return 0;
-	       }
-	       if (!ci_access_entry_add_acl(newlf->access_list, spec)) {
-		    ci_debug_printf(1, "Errorcreating accesslist for access log file %s!\n",
-				    newlf->file);
+	       acl_name = acls[i];
+	       if (!ci_access_entry_add_acl_by_name(newlf->access_list, acl_name)) {
+		    ci_debug_printf(1, "Error addind acl %s to access list for access log file %s!\n",
+				    acl_name, newlf->file);
 		    ci_access_entry_release(newlf->access_list);
 		    free(newlf->file);
 		    free(newlf);

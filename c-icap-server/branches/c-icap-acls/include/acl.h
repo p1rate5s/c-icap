@@ -69,6 +69,7 @@ struct ci_acl_spec {
 typedef struct ci_specs_list ci_specs_list_t;
 struct ci_specs_list{
      const ci_acl_spec_t *spec;
+     int negate;
      ci_specs_list_t *next;
 };
 
@@ -81,7 +82,8 @@ struct ci_access_entry {
 
 CI_DECLARE_FUNC(ci_access_entry_t *) ci_access_entry_new(ci_access_entry_t **list, int type);
 CI_DECLARE_FUNC(void) ci_access_entry_release(ci_access_entry_t *list);
-CI_DECLARE_FUNC(const ci_acl_spec_t *) ci_access_entry_add_acl(ci_access_entry_t *access_entry, const ci_acl_spec_t *acl);
+CI_DECLARE_FUNC(const ci_acl_spec_t *) ci_access_entry_add_acl(ci_access_entry_t *access_entry, const ci_acl_spec_t *acl, int negate);
+CI_DECLARE_FUNC(int) ci_access_entry_add_acl_by_name(ci_access_entry_t *access_entry, char *aclname);
 CI_DECLARE_FUNC(int) ci_access_entry_match_request(ci_access_entry_t *access_entry, ci_request_t *req);
 
 

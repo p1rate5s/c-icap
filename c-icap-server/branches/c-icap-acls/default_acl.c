@@ -26,6 +26,7 @@
 #include "simple_api.h"
 #include "acl.h"
 #include "net_io.h"
+#include "common.h"
 
 
 /*********************************************************************************************/
@@ -103,7 +104,7 @@ int cfg_default_acl_access(char *directive, char **argv, void *setdata)
      int only_connection =0;
      char *acl_spec_name;
      ci_access_entry_t **tolist,*access_entry;
-     const ci_acl_spec_t *acl_spec;
+//     const ci_acl_spec_t *acl_spec;
 
      if (argv[0] == NULL || argv[1] == NULL) {
           ci_debug_printf(1, "Parse error in directive %s \n", directive);
@@ -144,23 +145,19 @@ int cfg_default_acl_access(char *directive, char **argv, void *setdata)
      ci_debug_printf(1,"Creating new access entry as %s with specs:\n", argv[0]);
      for(argc=1; argv[argc] != NULL; argc++){	  
 	  acl_spec_name = argv[argc];
-	  acl_spec = ci_acl_search(acl_spec_name);
-	  if(!acl_spec) {
-	       ci_debug_printf(1, "The acl spec %s does not exists!\n", argv[argc]);
-	       error = 1;
-	  }
-	  else if(only_connection && 
-		  strcmp(acl_spec_name,"port") != 0 && 
-		  strcmp(acl_spec_name,"src") != 0 &&
-		  strcmp(acl_spec_name,"srvip") != 0 ) 
+
+	  if(only_connection && 
+	     strcmp(acl_spec_name,"port") != 0 && 
+	     strcmp(acl_spec_name,"src") != 0 &&
+	     strcmp(acl_spec_name,"srvip") != 0 ) 
 	  {
-	      ci_debug_printf(1, "Only \"port\", \"src\" and \"srvip\" acl types allowed in client_access access list (given :%s)\n", argv[argc]);
-	      error = 1;
+	       ci_debug_printf(1, "Only \"port\", \"src\" and \"srvip\" acl types allowed in client_access access list (given :%s)\n", acl_spec_name);
+	       error = 1;
 	  }
 	  else {
 	       /*TODO: check return type.....*/
-	       ci_access_entry_add_acl(access_entry, acl_spec);
-	       ci_debug_printf(1,"\tAdding acl spec: %s\n", argv[argc]);
+	       ci_access_entry_add_acl_by_name(access_entry, acl_spec_name);
+	       ci_debug_printf(1,"\tAdding acl spec: %s\n", acl_spec_name);
 	  }
      }
      if(error)
