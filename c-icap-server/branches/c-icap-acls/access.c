@@ -90,18 +90,8 @@ int access_check_request(ci_request_t * req)
 
      ci_debug_printf(9,"Going to check request for access control restrictions\n");
 
-     user = ci_headers_value(req->request_header, "X-Authenticated-User");
-     if (user) {
-          ci_base64_decode(user, req->user, MAX_USERNAME_LEN);
-     }
-
      res = check_request(req);
-     if (res==CI_ACCESS_HTTP_AUTH) {
-	 ci_debug_printf(9,"Authentication required\n");
-	 if ((res = http_authorize(req)) != CI_ACCESS_DENY) {
-	     res = check_request(req);
-	 }
-     }
+
      ci_debug_printf(9,"Access control: %s\n", (res==CI_ACCESS_ALLOW?
 					      "ALLOW":
 					      (res==CI_ACCESS_DENY?"DENY":"UNKNOWN")));
