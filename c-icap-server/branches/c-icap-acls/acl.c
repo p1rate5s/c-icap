@@ -86,10 +86,10 @@ void free_http_resp_header(ci_request_t *req, void *param);
 void *get_data_type(ci_request_t *req, char *param);
 void free_data_type(ci_request_t *req,void *param);
 
-
 ci_acl_type_t acl_user={
      "user",
      get_user,
+     NULL,
      NULL,
      &ci_str_ops
 };
@@ -98,12 +98,14 @@ ci_acl_type_t acl_service={
      "service",
      get_service,
      NULL,
+     NULL,
      &ci_str_ops
 };
 
 ci_acl_type_t acl_req_type={
      "type",
      get_reqtype,
+     NULL,
      NULL,
      &ci_str_ops
 };
@@ -112,6 +114,7 @@ ci_acl_type_t acl_tcp_port={
      "port",
      get_port,
      NULL,
+     NULL,
      &ci_int32_ops
 };
 
@@ -119,12 +122,14 @@ ci_acl_type_t acl_tcp_src={
      "src",
      get_client_ip,
      NULL,
+     NULL,
      &ci_ip_sockaddr_ops
 };
 
 ci_acl_type_t acl_tcp_srvip={
      "srvip",
      get_srv_ip,
+     NULL,
      NULL,
      &ci_ip_sockaddr_ops
 };
@@ -134,6 +139,7 @@ ci_acl_type_t acl_icap_header = {
      "icap_header",
      get_icap_header,
      free_icap_header,
+     NULL,
      &ci_regex_ops
 };
 
@@ -141,6 +147,7 @@ ci_acl_type_t acl_icap_resp_header = {
      "icap_resp_header",
      get_icap_response_header,
      free_icap_response_header,
+     NULL,
      &ci_regex_ops
 };
 
@@ -148,6 +155,7 @@ ci_acl_type_t acl_http_req_header = {
      "http_req_header",
      get_http_req_header,
      free_http_req_header,
+     NULL,
      &ci_regex_ops
 };
 
@@ -155,6 +163,7 @@ ci_acl_type_t acl_http_resp_header = {
      "http_resp_header",
      get_http_resp_header,
      free_http_resp_header,
+     NULL,
      &ci_regex_ops
 };
 #endif
@@ -163,8 +172,10 @@ ci_acl_type_t acl_data_type={
      "data_type",
      get_data_type,
      free_data_type,
+     NULL,
      &ci_datatype_ops
 };
+
 
 /********************************************************************************/
 /*   ci_access_entry api   functions                                            */
@@ -385,6 +396,15 @@ int ci_acl_typelist_init(struct ci_acl_type_list *list)
 int ci_acl_typelist_add(struct ci_acl_type_list *list,ci_acl_type_t *type)
 {
      ci_acl_type_t *cur;
+
+     if (!type->name)
+       return 0;
+
+     if (ci_acl_typelist_search(list, type->name) != NULL) {
+         ci_debug_printf(3, "The acl type %s already defined\n", type->name);
+	 return 0;
+     }
+
      if (list->acl_type_list_num == list->acl_type_list_size) {
 	  list->acl_type_list_size += STEP;
 	  list->acl_type_list = realloc(list->acl_type_list, 
@@ -463,13 +483,20 @@ int request_match_specslist(ci_request_t *req, const struct ci_specs_list *spec_
 	    return 0;
 	}
 
-	if (!spec_data_check(spec, test_data) && !negate) 	    
-	    return 0;
-	else if (spec_data_check(spec, test_data) && negate) 	    
-	    return 0;
+	if (!spec_data_check(spec, test_data) && !negate)
+	    ret = 0;
+	else if (spec_data_check(spec, test_data) && negate)
+	    ret = 0;
+
+	if (ret == 0)
+	  type->build_deny_info(req, spec->parameter, test_data);
 
 	if (type->free_test_data)
 	    type->free_test_data(req, test_data);
+	
+	if (ret == 0)
+	    return 0;
+
 	spec_list=spec_list->next;
     }
     return 1;
@@ -499,13 +526,6 @@ int ci_access_entry_match_request(ci_access_entry_t *access_entry, ci_request_t 
 
 static struct ci_acl_type_list types_list;
 static struct ci_acl_spec *specs_list;
-
-extern ci_acl_type_t acl_user;
-extern ci_acl_type_t acl_service;
-extern ci_acl_type_t acl_req_type;
-extern ci_acl_type_t acl_tcp_port;
-extern ci_acl_type_t acl_tcp_src;
-extern ci_acl_type_t acl_tcp_srvip;
 
 static int acl_load_defaults()
 {

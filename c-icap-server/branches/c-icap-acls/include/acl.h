@@ -32,6 +32,7 @@ typedef struct ci_acl_type{
      char name[MAX_NAME_LEN+1];
      void *(*get_test_data)(struct ci_request *req, char *param); 
      void (*free_test_data)(struct ci_request *req, void *data);
+  int  (*build_deny_info)(struct ci_request *req, char *param, void *data);
      ci_type_ops_t *type;
 } ci_acl_type_t;
 
