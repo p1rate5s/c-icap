@@ -13,6 +13,7 @@ typedef struct ci_type_ops {
 } ci_type_ops_t;
 
 CI_DECLARE_DATA extern ci_type_ops_t ci_str_ops;
+CI_DECLARE_DATA extern ci_type_ops_t ci_str_ext_ops;
 CI_DECLARE_DATA extern ci_type_ops_t ci_int32_ops;
 CI_DECLARE_DATA extern ci_type_ops_t ci_ip_ops;
 CI_DECLARE_DATA extern ci_type_ops_t ci_ip_sockaddr_ops;
@@ -20,5 +21,4 @@ CI_DECLARE_DATA extern ci_type_ops_t  ci_datatype_ops;
 #ifdef USE_REGEX
 CI_DECLARE_DATA extern ci_type_ops_t  ci_regex_ops;
 #endif
-
 #endif
