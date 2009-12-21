@@ -54,7 +54,7 @@ void *get_service(ci_request_t *req, char *param){
 }
 
 void *get_reqtype(ci_request_t *req, char *param){
-    return ci_method_string(req->type);
+    return (void *)ci_method_string(req->type);
 }
 
 void *get_port(ci_request_t *req, char *param){
@@ -90,14 +90,12 @@ ci_acl_type_t acl_user={
      "user",
      get_user,
      NULL,
-     NULL,
      &ci_str_ops
 };
 
 ci_acl_type_t acl_service={
      "service",
      get_service,
-     NULL,
      NULL,
      &ci_str_ops
 };
@@ -106,14 +104,12 @@ ci_acl_type_t acl_req_type={
      "type",
      get_reqtype,
      NULL,
-     NULL,
      &ci_str_ops
 };
 
 ci_acl_type_t acl_tcp_port={
      "port",
      get_port,
-     NULL,
      NULL,
      &ci_int32_ops
 };
@@ -122,14 +118,12 @@ ci_acl_type_t acl_tcp_src={
      "src",
      get_client_ip,
      NULL,
-     NULL,
      &ci_ip_sockaddr_ops
 };
 
 ci_acl_type_t acl_tcp_srvip={
      "srvip",
      get_srv_ip,
-     NULL,
      NULL,
      &ci_ip_sockaddr_ops
 };
@@ -139,7 +133,6 @@ ci_acl_type_t acl_icap_header = {
      "icap_header",
      get_icap_header,
      free_icap_header,
-     NULL,
      &ci_regex_ops
 };
 
@@ -147,7 +140,6 @@ ci_acl_type_t acl_icap_resp_header = {
      "icap_resp_header",
      get_icap_response_header,
      free_icap_response_header,
-     NULL,
      &ci_regex_ops
 };
 
@@ -155,7 +147,6 @@ ci_acl_type_t acl_http_req_header = {
      "http_req_header",
      get_http_req_header,
      free_http_req_header,
-     NULL,
      &ci_regex_ops
 };
 
@@ -163,7 +154,6 @@ ci_acl_type_t acl_http_resp_header = {
      "http_resp_header",
      get_http_resp_header,
      free_http_resp_header,
-     NULL,
      &ci_regex_ops
 };
 #endif
@@ -172,7 +162,6 @@ ci_acl_type_t acl_data_type={
      "data_type",
      get_data_type,
      free_data_type,
-     NULL,
      &ci_datatype_ops
 };
 
@@ -338,7 +327,7 @@ ci_acl_data_t *ci_acl_spec_new_data(ci_acl_spec_t *spec, char *val)
      return new_data;
 }
 
-ci_acl_spec_t *ci_acl_spec_search(ci_acl_spec_t *list, char *name)
+ci_acl_spec_t *ci_acl_spec_search(ci_acl_spec_t *list, const char *name)
 {
      ci_acl_spec_t *spec;
      ci_debug_printf(9,"In search specs list %p,name %s\n", list, name);
@@ -393,7 +382,7 @@ int ci_acl_typelist_init(struct ci_acl_type_list *list)
      return 1;
 }
 
-int ci_acl_typelist_add(struct ci_acl_type_list *list,ci_acl_type_t *type)
+int ci_acl_typelist_add(struct ci_acl_type_list *list, const ci_acl_type_t *type)
 {
      ci_acl_type_t *cur;
 
@@ -407,7 +396,7 @@ int ci_acl_typelist_add(struct ci_acl_type_list *list,ci_acl_type_t *type)
 
      if (list->acl_type_list_num == list->acl_type_list_size) {
 	  list->acl_type_list_size += STEP;
-	  list->acl_type_list = realloc(list->acl_type_list, 
+	  list->acl_type_list = realloc((void *)list->acl_type_list, 
 					list->acl_type_list_size*sizeof(ci_acl_type_t));
      }
 
@@ -420,7 +409,7 @@ int ci_acl_typelist_add(struct ci_acl_type_list *list,ci_acl_type_t *type)
      return 1;
 }
 
-const ci_acl_type_t *ci_acl_typelist_search(struct ci_acl_type_list *list,char *name)
+const ci_acl_type_t *ci_acl_typelist_search(struct ci_acl_type_list *list,const char *name)
 {
      int i;
      for (i=0; i<list->acl_type_list_num; i++) {
@@ -483,13 +472,10 @@ int request_match_specslist(ci_request_t *req, const struct ci_specs_list *spec_
 	    return 0;
 	}
 
-	if (!spec_data_check(spec, test_data) && !negate)
+	if (spec_data_check(spec, test_data)==0 && negate==0)
 	    ret = 0;
-	else if (spec_data_check(spec, test_data) && negate)
+	else if (spec_data_check(spec, test_data)!=0 && negate!=0)
 	    ret = 0;
-
-	if (ret == 0)
-	  type->build_deny_info(req, spec->parameter, test_data);
 
 	if (type->free_test_data)
 	    type->free_test_data(req, test_data);
@@ -559,12 +545,17 @@ void ci_acl_reset()
      acl_load_defaults();
 }
 
-const ci_acl_spec_t *ci_acl_search(char *name){
+const ci_acl_spec_t *ci_acl_search(const char *name){
     return (const ci_acl_spec_t *)ci_acl_spec_search(specs_list, name);
 }
 
-const ci_acl_type_t *ci_acl_type_search(char *name){
+const ci_acl_type_t *ci_acl_type_search(const char *name){
      return ci_acl_typelist_search(&types_list, name);
+}
+
+int ci_acl_type_add(const ci_acl_type_t *type)
+{
+    return ci_acl_typelist_add(&types_list, type);
 }
 
 int cfg_acl_add(char *directive, char **argv, void *setdata)
