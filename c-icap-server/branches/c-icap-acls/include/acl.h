@@ -32,6 +32,7 @@ typedef struct ci_acl_type{
      char name[MAX_NAME_LEN+1];
      void *(*get_test_data)(struct ci_request *req, char *param); 
      void (*free_test_data)(struct ci_request *req, void *data);
+  int  (*build_deny_info)(struct ci_request *req, char *param, void *data);
      ci_type_ops_t *type;
 } ci_acl_type_t;
 
@@ -42,10 +43,10 @@ struct ci_acl_type_list{
 };
 
 int ci_acl_typelist_init(struct ci_acl_type_list *list);
-int ci_acl_typelist_add(struct ci_acl_type_list *list, const ci_acl_type_t *type);
+int ci_acl_typelist_add(struct ci_acl_type_list *list, ci_acl_type_t *type);
 int ci_acl_typelist_release(struct ci_acl_type_list *list);
 int ci_acl_typelist_reset(struct ci_acl_type_list *list);
-const ci_acl_type_t *ci_acl_typelist_search(struct ci_acl_type_list *list, const char *name);
+const ci_acl_type_t *ci_acl_typelist_search(struct ci_acl_type_list *list, char *name);
 
 
 /*ACL specs structures and functions */
@@ -90,8 +91,7 @@ CI_DECLARE_FUNC(int) ci_access_entry_match_request(ci_access_entry_t *access_ent
 /*Inititalizing, reseting and tools acl library functions */
 CI_DECLARE_FUNC(void) ci_acl_init();
 CI_DECLARE_FUNC(void) ci_acl_reset();
-CI_DECLARE_FUNC(const ci_acl_spec_t *) ci_acl_search(const char *name);
-CI_DECLARE_FUNC(const ci_acl_type_t *) ci_acl_type_search(const char *name);
-CI_DECLARE_FUNC(int) ci_acl_type_add(const ci_acl_type_t *type);
+CI_DECLARE_FUNC(const ci_acl_spec_t *) ci_acl_search(char *name);
+CI_DECLARE_FUNC(const ci_acl_type_t *) ci_acl_type_search(char *name);
 
 #endif/* __ACL_H*/
