@@ -81,6 +81,11 @@ extern char *ACCESS_LOG_FORMAT;
 extern logger_module_t *default_logger;
 extern access_control_module_t **used_access_controllers;
 
+extern char *REMOTE_PROXY_USER_HEADER;
+extern int ALLOW_REMOTE_PROXY_USERS;
+extern int REMOTE_PROXY_USER_HEADER_ENCODED;
+
+
 /*Functions declaration */
 int parse_file(char *conf_file);
 
@@ -151,6 +156,9 @@ static struct ci_conf_entry conf_variables[] = {
      {"client_access", NULL, cfg_default_acl_access, NULL},
      {"AuthMethod", NULL, cfg_set_auth_method, NULL},
      {"Include", NULL, cfg_include_config_file, NULL},
+     {"RemoteProxyUserHeader", &REMOTE_PROXY_USER_HEADER, intl_cfg_set_str, NULL},
+     {"RemoteProxyUserHeaderEncoded", &REMOTE_PROXY_USER_HEADER_ENCODED, intl_cfg_onoff, NULL},
+     {"RemoteProxyUsers", &ALLOW_REMOTE_PROXY_USERS, intl_cfg_onoff, NULL},
      {NULL, NULL, NULL, NULL}
 };
 
@@ -210,7 +218,7 @@ int register_conf_table(char *name, struct ci_conf_entry *table, int type)
 	     /*tables list is full, reallocating space ...... */
 	     if (NULL ==
 		 (new =
-		  realloc(extra_conf_tables, conf_tables_list_size + STEPSIZE)))
+		  realloc(extra_conf_tables, sizeof(struct sub_table)*(conf_tables_list_size + STEPSIZE))))
 		 return 0;
 	     extra_conf_tables = new;
 	     conf_tables_list_size += STEPSIZE;

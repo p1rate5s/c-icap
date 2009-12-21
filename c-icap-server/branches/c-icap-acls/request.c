@@ -1049,8 +1049,14 @@ int do_request(ci_request_t * req)
 
      auth_status = req->access_type;
      if ((auth_status = access_check_request(req)) == CI_ACCESS_DENY) {
-          ec_responce(req, EC_401);     /*Responce with bad request */
-	  req->return_code = EC_401;
+	 if (req->auth_required) {
+	      ec_responce_with_istag(req, EC_407);     /*Responce with bad request */
+	      req->return_code = EC_407;
+	 }
+	 else {
+	      ec_responce(req, EC_401);
+	      req->return_code = EC_401;
+	 }
           return CI_ERROR;      /*Or something that means authentication error */
      }
 
