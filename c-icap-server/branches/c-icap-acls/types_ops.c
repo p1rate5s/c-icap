@@ -51,6 +51,37 @@ ci_type_ops_t  ci_str_ops = {
     stringequal,
 };
 
+int string_ext_cmp(void *key1,void *key2)
+{
+    if (!key2)
+        return -1;
+
+    if (strcmp(key1, "*") == 0)
+	return 0;
+
+    return strcmp((char *)key1,(char *)key2);
+}
+
+int string_ext_equal(void *key1,void *key2)
+{
+    if (!key2)
+        return 0;
+
+    if (strcmp(key1, "*") == 0)
+	return 1;
+
+    return strcmp((char *)key1,(char *)key2)==0;
+}
+
+
+ci_type_ops_t ci_str_ext_ops = {
+    stringdup,
+    stringfree,
+    string_ext_cmp,
+    stringlen,
+    string_ext_equal,
+};
+
 
 /*int32 operators*/
 
