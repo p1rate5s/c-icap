@@ -128,20 +128,17 @@ int cfg_default_acl_access(char *directive, char **argv, void *setdata)
      else if (strcmp(argv[0], "deny") == 0) {
           type = CI_ACCESS_DENY;
      }
-     else if (strcmp(argv[0], "http_auth") == 0) {
-	  if(only_connection) {	     
-	      ci_debug_printf(1, "http_auth access type not allowed in client_access access list\n");
-	      return 0;
-	  }
-          type = CI_ACCESS_HTTP_AUTH;
-     }
      else {
           ci_debug_printf(1, "Invalid directive :%s. Disabling %s acl rule \n",
                           argv[0], argv[1]);
           return 0;
      }
      
-     access_entry = ci_access_entry_new(tolist, type);
+     if ((access_entry = ci_access_entry_new(tolist, type)) == NULL) {
+	 ci_debug_printf(1,"Error creating new access entry as %s access list\n", argv[0]);
+	 return 0;
+     }
+
      ci_debug_printf(1,"Creating new access entry as %s with specs:\n", argv[0]);
      for(argc=1; argv[argc] != NULL; argc++){	  
 	  acl_spec_name = argv[argc];
