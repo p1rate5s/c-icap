@@ -1,0 +1,420 @@
+dnl Process this file with autoconf to produce a configure script.
+
+
+#AC_INIT(c_icap,m4_normalize(m4_include([VERSION.m4])))
+AC_INIT(c_icap,060708rc4)
+
+AC_CONFIG_SRCDIR(aserver.c)
+AM_MAINTAINER_MODE
+AM_CONFIG_HEADER(include/c-icap-conf.h)
+
+AM_INIT_AUTOMAKE([subdir-objects])
+
+AC_PROG_CC
+AM_PROG_CC_C_O
+
+AC_DISABLE_STATIC
+AC_LIBTOOL_DLOPEN
+AC_LIBTOOL_WIN32_DLL
+AC_PROG_LIBTOOL
+AC_SUBST(LIBTOOL_DEPS)
+
+dnl AC_CANONICAL_HOST
+
+dnl Checks for OS specific flags
+
+case "$host_os" in
+     solaris2.*)
+          LIBS="-lsocket -lnsl"
+	  TEST_LIBS=" -lrt"
+      ;;
+      cygwin*)
+	MODULES_LIBADD="-L../../ -licapapi"
+	AC_SUBST(MODULES_LIBADD)
+	iscygwin="yes"
+      ;;
+esac
+
+CFLAGS="$CFLAGS -Wall"
+
+
+dnl Checking for posix threads libraries.....
+
+
+case "$host_os" in
+     linux*)
+	CFLAGS="-D_REENTRANT $CFLAGS"
+	THREADS_LDADD="-lpthread"
+	THREADS_LDFLAGS=""
+     ;;
+     solaris2.*)
+     	  CFLAGS="-D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS $CFLAGS"
+	  THREADS_LDADD="-lpthread"
+	  THREADS_LDFLAGS=""
+      ;;
+      freebsd5*)
+## If I understand how all those threading models works correctly
+## in FreeBSD I will make an option in configure script 
+## --with-freebsd-threads={c_r,pthreads,linuxthreads,thr}
+## If I am correct I must compile c-icap with the way 
+## external libraries are compiled. (The clamav uses -lc_r and I had problems 
+## using a different threading model)
+ 
+##    FreeBSD linuxthreads flags
+#      	CFLAGS="-D_THREAD_SAFE -I/usr/local/include/pthread/linuxthreads $CFLAGS"
+#	THREADS_LDADD="-llthread -lgcc_r"
+#	THREADS_LDFLAGS="-L/usr/local/lib"
+
+##    FreeBSD Standard threads
+      	CFLAGS="-pthread -D_THREAD_SAFE  $CFLAGS"
+	THREADS_LDADD="-XCClinker -lc_r"
+	THREADS_LDFLAGS=""
+## FreeBSD has pthreads rwlocks from version 3 (I think)
+#	AC_DEFINE(HAVE_PTHREADS_RWLOCK,1,[Define HAVE_PTHREADS_RWLOCK if pthreads library supports rwlocks])
+##   1:1 threads 
+#      	CFLAGS="-D_THREAD_SAFE  $CFLAGS"
+#	THREADS_LDADD="-XCClinker -lthr"
+#	THREADS_LDFLAGS=""
+
+      ;;
+
+      freebsd6*)
+        CFLAGS="-D_THREAD_SAFE  $CFLAGS"
+        THREADS_LDADD="-XCClinker -lthr"
+        THREADS_LDFLAGS=""
+      ;;
+
+      cygwin*)
+	CFLAGS="-D_REENTRANT $CFLAGS"
+	THREADS_LDADD="-lpthread"
+	THREADS_LDFLAGS="";
+      ;;
+      *)
+      	CFLAGS="-D_REENTRANT $CFLAGS"
+	THREADS_LDADD="-lpthread"
+	THREADS_LDFLAGS=""
+      ;;
+esac
+
+TEST_LIBS="$TEST_LIBS $THREADS_LDADD"
+AC_SUBST(THREADS_LDADD)
+AC_SUBST(THREADS_LDFLAGS)
+
+
+AC_ARG_ENABLE(large_files,
+[  --enable-large-files	Enable large files support],
+[ if test $enableval = "yes"; then
+    large_file_support="yes"
+  fi
+],
+   [ large_file_support="no" ]
+)
+
+if test $large_file_support = "yes"; then
+   CFLAGS="$CFLAGS -D_FILE_OFFSET_BITS=64"
+#here I must put a check if the -D_FILE_OFFSET_BITS makes the off_t  an 64bit integer
+# and if not supported warning the user
+#Possibly checks for systems which supports large files using different defines....
+#later .......
+fi
+
+
+AC_ARG_ENABLE(ipv6,
+[  --enable-ipv6	Enable ipv6 support],
+[ if test $enableval = "yes"; then
+    ipv6_support="yes"
+    AC_DEFINE(HAVE_IPV6,1,[Define HAVE_IPV6 if OS supports ipv6])	
+  fi
+],
+   [ ipv6_support="no" ]
+)
+
+AC_MSG_CHECKING([Keep library compatibility])
+AC_ARG_ENABLE(lib_compat,
+[  --enable-lib-compat	Enable library compatibility with older c-icap versions],
+[ if test $enableval = "yes"; then
+    lib_compat="yes"
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(__CI_COMPAT,1,[Define __CI_COMPAT if you want library compatibility with older c-icap versions])	
+  fi
+],
+   [ lib_compat="no"
+     AC_MSG_RESULT(no)
+    ]
+)
+
+
+# Checks for programs
+
+# Checks for libraries
+
+
+AC_ARG_WITH(clamav,
+[  --with-clamav	Where to find ClamAv ],
+[ case "$withval" in
+  yes)
+#    AC_MSG_WARN([--with-clamav called without argument])
+    clamav="yes"
+  ;;			     
+  no )
+    clamav="no"
+  ;;
+  * )
+    clamav="yes"
+    clamavinc=-I"$withval"/include
+    clamavlib=-L"$withval"/lib
+  ;;
+  esac
+],
+)
+
+AC_SUBST(clamavinc)
+AC_SUBST(clamavlib)
+OLD_CFLAGS=$CFLAGS
+CFLAGS=$clamavinc
+AC_MSG_CHECKING([for clamav 0.90.x or newer])
+AC_TRY_COMPILE(
+[#include <clamav.h>], 
+[struct cl_engine node; node.refcount=1;],
+AC_DEFINE(HAVE_LIBCLAMAV_09X,1,[Define HAVE_LIBCLAMAV_09X if have clamav 0.90.x or newer])
+AC_MSG_RESULT(yes), 
+AC_MSG_RESULT(no),
+)
+
+AC_MSG_CHECKING([for maxratio field in cl_limits struct])
+AC_TRY_COMPILE(
+[#include <clamav.h>], 
+[struct cl_limits limits; limits.maxratio=200;],
+AC_DEFINE(HAVE_LIBCLAMAV_LIMITS_MAXRATIO,1,[Define HAVE_LIBCLAMAV_LIMITS_MAXRATIO if has cl_limits.maxratio])
+AC_MSG_RESULT(yes), 
+AC_MSG_RESULT(no),
+)
+
+#
+# clamav drop the cl_limits struct at version 0.95. I think it is
+# a good check for clamav lib version.
+AC_MSG_CHECKING([for clamav 0.95 or newer])
+AC_TRY_COMPILE(
+[#include <clamav.h>],
+[struct cl_limits limist;],
+AC_MSG_RESULT(no),
+AC_DEFINE(HAVE_LIBCLAMAV_095,1,[Define HAVE_LIBCLAMAV_095 if have clamav 0.95.x or newer])
+AC_MSG_RESULT(yes),
+)
+# restore flags  / clamav tests
+
+CFLAGS=$OLD_CFLAGS
+
+AC_ARG_WITH(perl, 
+[  --with-perl		Path to perl binary],
+[
+case "$withval" in
+  yes)
+       perlbin="perl"
+  ;;			     
+  no )
+       perlbin="";
+       perlcore="";
+  ;;
+  * )
+      perlbin=$withval
+  ;;
+  esac
+],
+[
+   perlbin="";
+   perlcore="";
+]
+)
+
+if test a"$perlbin" != a; then 
+	perlcore=`$perlbin -MConfig -e 'print $Config{archlib}'`/CORE;
+        perllib=`$perlbin -MConfig -e 'print $Config{libs}'`;
+        perlccflags=`$perlbin -MConfig -e 'print $Config{ccflags}'`;
+	perlldflags=`$perlbin -MConfig -e 'print $Config{ccdlflags}'`;
+fi
+
+
+
+AC_SUBST(perlcore)
+AC_SUBST(perllib)
+AC_SUBST(perlccflags)
+AC_SUBST(perlldflags)
+
+
+AC_CHECK_LIB(dl,dlopen,DL_ADD_FLAG=" -ldl")
+AC_SUBST(DL_ADD_FLAG)
+
+AC_ARG_WITH(zlib,
+[	--with-zlib	Path to zlib library],
+[
+case "$withval" in
+     yes)
+	zlib=yes;
+     ;;
+     no)
+	zlib=no;
+     ;;
+     *)
+	zlib=$withval;
+     ;;
+     esac
+],
+[ zlib=yes]
+)
+
+if test a"$zlib" != "ano"; then
+   if test a"$zlib" != "ayes"; then
+	AC_CHECK_LIB(z,inflate,[ZLIB_ADD_LDFLAG="-L$zlib/lib -lz";ZLIB_ADD_FLAG="-I$zlib/include";AC_DEFINE(HAVE_ZLIB,1,[Define HAVE_ZLIB if zlib installed])],[zlib=no])
+	AC_SUBST(ZLIB_ADD_LDFLAG)
+	AC_SUBST(ZLIB_ADD_FLAG)	
+   else
+	AC_CHECK_LIB(z,inflate,[ZLIB_ADD_LDFLAG=" -lz";AC_DEFINE(HAVE_ZLIB,1,[Define HAVE_ZLIB if zlib installed])],[zlib=no])
+	AC_SUBST(ZLIB_ADD_LDFLAG)
+   fi
+fi
+if test a"$zlib" = "ano"; then
+    AC_MSG_WARN("zlib required for the c-icap's internal filetype recognizer!")
+fi
+
+
+# Check for header files
+AC_HEADER_STDC
+AC_CHECK_HEADERS(strings.h unistd.h sys/stat.h)
+AC_CHECK_HEADERS(sys/ipc.h,
+AC_DEFINE(HAVE_SYSV_IPC,1,[Define HAVE_SYSV_IPC if sys/ipc.h exists (maybe more tests needed)])
+)
+
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_SIZE_T
+AC_TYPE_OFF_T
+AC_CHECK_SIZEOF(off_t)
+
+# if I am not wrong for every 32bit and 64bit machine, 'short' is always 16bit, 'int' is 32bit
+# and long is 32bit or 64bit respectively.
+AC_CHECK_TYPE(uint8_t,,
+	[AC_DEFINE(uint8_t, unsigned char, [Define to 'unsigned char' if <sys/types.h> does not define.])])
+AC_CHECK_TYPE(uint16_t,,
+	[AC_DEFINE(uint16_t, unsigned short, [Define to 'unsigned short' if <sys/types.h> does not define.])])
+AC_CHECK_TYPE(uint32_t,,
+	[AC_DEFINE(uint32_t, unsigned int, [Define to 'unsigned int' if <sys/types.h> does not define.])])
+
+# Checks for library functions.
+
+#Here we are changing the LIBS variable and save the current value to OLD_LIBS variable
+OLD_LIBS="$LIBS"
+LIBS="$LIBS $TEST_LIBS"
+
+#AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(inet_aton,
+AC_DEFINE(HAVE_INET_ATON,1,[Define HAVE_INET_ATON if inet_aton exists])
+)
+
+AC_CHECK_FUNCS(mmap munmap,
+AC_DEFINE(HAVE_POSIX_MAPPED_FILES,1,[Define HAVE_POSIX_MAPPED_FILES if mmap and munmap exists])
+)
+
+dnl Checking if union semun exists in this system.
+AC_MSG_CHECKING([if union semun defined])
+AC_TRY_COMPILE(
+[
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+], 
+[union semun a_semun;],
+AC_DEFINE(HAVE_UNION_SEMUN,1,[Define HAVE_UNION_SEMUN if union semun defined in ipc])
+AC_MSG_RESULT(yes), 
+AC_MSG_RESULT(no),
+)
+
+dnl Checking if interprocess posix semaphores works....
+AC_MSG_CHECKING(if posix 1003.1b interprocess semaphores works)
+AC_TRY_RUN(
+[
+#include <semaphore.h>
+#include <sys/wait.h>
+
+int main(int argc,char **argv){
+      sem_t s;
+      pid_t pid;
+      int status;
+      if(sem_init(&s,1,1)!=0){
+        return -1;
+      }
+     if((pid=fork())==0){
+	  if(sem_post(&s)<0){
+	       exit(-1);
+	  }
+	  exit(0);
+     }
+     else{
+	waitpid(pid,&status,0);
+	if(WEXITSTATUS(status)!=0)
+	       exit(-1);
+     }
+      sem_destroy(&s);
+      exit(0);
+}
+],
+AC_DEFINE(HAVE_POSIX_SEMAPHORES,1,[Define HAVE_POSIX_SEMAPHORES if posix 1003.1b semaphores works])
+AC_MSG_RESULT(yes),
+AC_MSG_RESULT(no)
+)
+
+dnl Checking for file locking
+AC_MSG_CHECKING(if fcntl file locking works)	
+AC_TRY_RUN(
+[
+#include <unistd.h>
+#include <fcntl.h>
+
+
+int main(int argc,char **argv){
+     struct flock fl;
+     int fd;
+
+     fd=open("config.h.in",O_RDWR);
+
+     fl.l_type=F_WRLCK;
+     fl.l_whence=SEEK_SET;
+     fl.l_start=0;
+     fl.l_len=0;
+
+     if(fcntl(fd,F_SETLKW,&fl)<0){
+         close(fd);
+          return -1;
+    }
+     close(fd);
+     return 0;
+}
+],
+AC_DEFINE(HAVE_POSIX_FILE_LOCK,1,[Define HAVE_POSIX_FILE_LOCK if posix fcntl file locking works])
+AC_MSG_RESULT(yes),
+AC_MSG_RESULT(no)
+)
+
+AC_MSG_CHECKING([if have pthread_rwlock])
+AC_TRY_COMPILE(
+[#include <pthread.h>], 
+[pthread_rwlock_t lock;],
+AC_DEFINE(HAVE_PTHREADS_RWLOCK,1,[Define HAVE_PTHREADS_RWLOCK if pthreads library supports rwlocks])
+AC_MSG_RESULT(yes), 
+AC_MSG_RESULT(no),
+)
+
+
+#We are pouting back real LIBS variable
+LIBS=$OLD_LIBS
+
+#general parameters
+AM_CONDITIONAL(ISCYGWIN,[test a"$iscygwin" != a])
+
+# Now determine which modules will going to build .....
+
+AM_CONDITIONAL(USEPERL,[test a"$perlcore" != a])
+AM_CONDITIONAL(USECLAMAV,[test a"$clamav" != ano])
+
+AC_OUTPUT([Makefile c-icap.conf services/Makefile services/echo/Makefile services/url_check/Makefile services/clamav/Makefile modules/Makefile])
