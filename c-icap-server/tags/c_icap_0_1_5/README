@@ -1,0 +1,5 @@
+COMMENTS:
+* c-icap is more tested in Linux systems. However compiles and runs at least 
+in FreeBSD 7.x/8.x and possibly in other platforms. At regular times I am 
+testing it also in solaris 10, and opensolaris
+
